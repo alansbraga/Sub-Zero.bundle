@@ -27,31 +27,33 @@ def int_or_default(s, default):
 
 class Config(object):
     version = None
-    langList = None
-    subtitleDestinationFolder = None
+    full_version = None
+    lang_list = None
+    subtitle_destination_folder = None
+    subtitle_destination_Folder = None
     providers = None
-    providerSettings = None
+    provider_settings = None
     max_recent_items_per_library = 200
     plex_api_working = False
 
     initialized = False
 
     def initialize(self):
-        self.version = self.getVersion()
+        self.version = self.get_version()
         self.full_version = u"%s %s" % (PLUGIN_NAME, self.version)
-        self.langList = self.getLangList()
-        self.subtitleDestinationFolder = self.getSubtitleDestinationFolder()
-        self.providers = self.getProviders()
-        self.providerSettings = self.getProviderSettings()
+        self.lang_list = self.get_lang_list()
+        self.subtitle_destination_folder = self.get_subtitle_destination_folder()
+        self.providers = self.get_providers()
+        self.provider_settings = self.get_provider_settings()
         self.max_recent_items_per_library = int_or_default(Prefs["scheduler.max_recent_items_per_library"], 200)
         self.initialized = True
         configure_plex()
-        self.plex_api_working = self.checkPlexAPI()
+        self.plex_api_working = self.check_plex_api()
 
-    def checkPlexAPI(self):
+    def check_plex_api(self):
         return bool(Plex["library"].sections())
 
-    def getVersion(self):
+    def get_version(self):
         curDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
         info_file_path = os.path.abspath(os.path.join(curDir, "..", "..", "Info.plist"))
         data = FileIO.read(info_file_path)
@@ -59,13 +61,13 @@ class Config(object):
         if result:
             return result.group(1)
 
-    def getBlacklist(self, key):
+    def get_blacklist(self, key):
         return map(lambda id: id.strip(), (Prefs[key] or "").split(","))
 
     # Prepare a list of languages we want subs for
-    def getLangList(self):
+    def get_lang_list(self):
         l = {Language.fromietf(Prefs["langPref1"])}
-        langCustom = Prefs["langPrefCustom"].strip()
+        lang_custom = Prefs["langPrefCustom"].strip()
 
         if Prefs['subtitles.only_one']:
             return l
@@ -76,8 +78,8 @@ class Config(object):
         if Prefs["langPref3"] != "None":
             l.update({Language.fromietf(Prefs["langPref3"])})
 
-        if len(langCustom) and langCustom != "None":
-            for lang in langCustom.split(u","):
+        if len(lang_custom) and lang_custom != "None":
+            for lang in lang_custom.split(u","):
                 lang = lang.strip()
                 try:
                     real_lang = Language.fromietf(lang)
@@ -90,14 +92,14 @@ class Config(object):
 
         return l
 
-    def getSubtitleDestinationFolder(self):
+    def get_subtitle_destination_folder(self):
         if not Prefs["subtitles.save.filesystem"]:
             return
 
         fld_custom = Prefs["subtitles.save.subFolder.Custom"].strip() if bool(Prefs["subtitles.save.subFolder.Custom"]) else None
         return fld_custom or (Prefs["subtitles.save.subFolder"] if Prefs["subtitles.save.subFolder"] != "current folder" else None)
 
-    def getProviders(self):
+    def get_providers(self):
         providers = {'opensubtitles': Prefs['provider.opensubtitles.enabled'],
                      #'thesubdb': Prefs['provider.thesubdb.enabled'],
                      'podnapisi': Prefs['provider.podnapisi.enabled'],
@@ -106,7 +108,7 @@ class Config(object):
                      }
         return filter(lambda prov: providers[prov], providers)
 
-    def getProviderSettings(self):
+    def get_provider_settings(self):
         provider_settings = {'addic7ed': {'username': Prefs['provider.addic7ed.username'],
                                           'password': Prefs['provider.addic7ed.password'],
                                           'use_random_agents': Prefs['provider.addic7ed.use_random_agents'],

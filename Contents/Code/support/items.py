@@ -24,7 +24,7 @@ def get_kind(items):
     return items[0][MI_KIND]
 
 
-def getSectionSize(key):
+def get_section_size(key):
     """
     quick query to determine the section size
     :param key:
@@ -44,7 +44,7 @@ def getSectionSize(key):
     return size
 
 
-def getItems(key="recently_added", base="library", value=None, flat=False, add_section_title=False):
+def get_items(key="recently_added", base="library", value=None, flat=False, add_section_title=False):
     """
     try to handle all return types plex throws at us and return a generalized item tuple
     """
@@ -81,7 +81,7 @@ def getItems(key="recently_added", base="library", value=None, flat=False, add_s
             items.append(("directory", item.title, item.key, True, item))
 
         elif kind == "section":
-            item.size = getSectionSize(item.key)
+            item.size = get_section_size(item.key)
             items.append(("section", item.title, int(item.key), True, item))
 
         elif kind == "episode":
@@ -101,12 +101,12 @@ def getItems(key="recently_added", base="library", value=None, flat=False, add_s
     return items
 
 
-def getRecentlyAddedItems():
-    items = getItems(key="recently_added")
+def get_recently_added_items():
+    items = get_items(key="recently_added")
     return filter(lambda x: is_recent(x[MI_ITEM].added_at), items)
 
 
-def getRecentItems():
+def get_recent_items():
     """
     actually get the recent items, not limited like /library/recentlyAdded
     :return:
@@ -155,15 +155,15 @@ def getRecentItems():
     return recent
 
 
-def getOnDeckItems():
-    return getItems(key="on_deck", add_section_title=True)
+def get_on_deck_items():
+    return get_items(key="on_deck", add_section_title=True)
 
 
-def getAllItems(key, base="library", value=None, flat=False):
-    return getItems(key, base=base, value=value, flat=flat)
+def get_all_items(key, base="library", value=None, flat=False):
+    return get_items(key, base=base, value=value, flat=flat)
 
 
-def refreshItem(rating_key, force=False, timeout=8000):
+def refresh_item(rating_key, force=False, timeout=8000):
     # timeout actually is the time for which the intent will be valid
     if force:
         intent.set("force", rating_key, timeout=timeout)

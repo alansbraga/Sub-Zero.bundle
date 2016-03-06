@@ -4,11 +4,11 @@ import datetime
 import pprint
 
 
-def getSubtitleInfo(rating_key):
+def get_subtitle_info(rating_key):
     return Dict["subs"].get(rating_key)
 
 
-def whackMissingParts(videos, existing_parts=None):
+def whack_missing_parts(videos, existing_parts=None):
     """
     cleans out our internal storage's video parts (parts may get updated/deleted/whatever)
     :param existing_parts: optional list of part ids known
@@ -37,7 +37,7 @@ def whackMissingParts(videos, existing_parts=None):
         Dict.Save()
 
 
-def storeSubtitleInfo(videos, subtitles, storage_type):
+def store_subtitle_info(videos, subtitles, storage_type):
     """
     stores information about downloaded subtitles in plex's Dict()
     """
@@ -71,11 +71,11 @@ def storeSubtitleInfo(videos, subtitles, storage_type):
             lang_dict["current"] = sub_key
 
     if existing_parts:
-        whackMissingParts(videos, existing_parts=existing_parts)
+        whack_missing_parts(videos, existing_parts=existing_parts)
     Dict.Save()
 
 
-def resetStorage(key):
+def reset_storage(key):
     """
     resets the Dict[key] storage, thanks to https://docs.google.com/document/d/1hhLjV1pI-TA5y91TiJq64BdgKwdLnFt4hWgeOqpz1NA/edit#
     We can't use the nice Plex interface for this, as it calls get multiple times before set
@@ -87,6 +87,6 @@ def resetStorage(key):
     Dict.Save()
 
 
-def logStorage(key):
+def log_storage(key):
     if key in Dict:
         Log.Debug(pprint.pformat(Dict[key]))
