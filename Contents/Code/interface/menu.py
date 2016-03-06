@@ -9,11 +9,11 @@ from support.background import scheduler
 from support.config import config
 from support.helpers import pad_title, timestamp
 from support.ignore import ignore_list
-from support.items import getOnDeckItems, refreshItem, getAllItems
-from support.items import getRecentItems, get_items_info
+from support.items import get_on_deck_items, refresh_item, get_all_items
+from support.items import get_recent_items, get_items_info
 from support.lib import Plex, lib_unaccessible_error
-from support.missing_subtitles import getAllMissing
-from support.storage import resetStorage, logStorage, getSubtitleInfo
+from support.missing_subtitles import items_get_all_missing_subs
+from support.storage import reset_storage, log_storage, get_subtitle_info
 
 # init GUI
 ObjectContainer.art = R(ART)
@@ -115,7 +115,7 @@ def fatality(randomize=None, force_title=None, header=None, message=None, only_r
 
 @route(PREFIX + '/on_deck')
 def OnDeckMenu(message=None):
-    return mergedItemsMenu(title="Items On Deck", base_title="Items On Deck", itemGetter=getOnDeckItems)
+    return mergedItemsMenu(title="Items On Deck", base_title="Items On Deck", itemGetter=get_on_deck_items)
 
 
 @route(PREFIX + '/recent')
@@ -125,9 +125,9 @@ def RecentlyAddedMenu(message=None):
 
 def recentItemsMenu(title, base_title=None):
     oc = ObjectContainer(title2=title, no_cache=True, no_history=True)
-    recent_items = getRecentItems()
+    recent_items = get_recent_items()
     if recent_items:
-        missing_items = getAllMissing(recent_items)
+        missing_items = items_get_all_missing_subs(recent_items)
         if missing_items:
             for added_at, item_id, title in missing_items:
                 oc.add(DirectoryObject(
@@ -199,7 +199,7 @@ def IgnoreMenu(kind, rating_key, title=None, sure=False, todo="not_set"):
 
 @route(PREFIX + '/sections')
 def SectionsMenu():
-    items = getAllItems("sections")
+    items = get_all_items("sections")
 
     return dig_tree(ObjectContainer(title2="Sections", no_cache=True, no_history=True), items, None,
                     menu_determination_callback=determine_section_display, pass_kwargs={"base_title": "Sections"},
@@ -208,7 +208,7 @@ def SectionsMenu():
 
 @route(PREFIX + '/section', ignore_options=bool)
 def SectionMenu(rating_key, title=None, base_title=None, section_title=None, ignore_options=True):
-    items = getAllItems(key="all", value=rating_key, base="library/sections")
+    items = get_all_items(key="all", value=rating_key, base="library/sections")
 
     kind, deeper = get_items_info(items)
     title = unicode(title)
@@ -226,7 +226,7 @@ def SectionMenu(rating_key, title=None, base_title=None, section_title=None, ign
 
 @route(PREFIX + '/section/firstLetter', deeper=bool)
 def SectionFirstLetterMenu(rating_key, title=None, base_title=None, section_title=None):
-    items = getAllItems(key="first_character", value=rating_key, base="library/sections")
+    items = get_all_items(key="first_character", value=rating_key, base="library/sections")
 
     kind, deeper = get_items_info(items)
 
@@ -258,7 +258,7 @@ def FirstLetterMetadataMenu(rating_key, key, title=None, base_title=None, displa
     title = base_title + " > " + unicode(title)
     oc = ObjectContainer(title2=title, no_cache=True, no_history=True)
 
-    items = getAllItems(key="first_character", value=[rating_key, key], base="library/sections", flat=False)
+    items = get_all_items(key="first_character", value=[rating_key, key], base="library/sections", flat=False)
     kind, deeper = get_items_info(items)
     dig_tree(oc, items, MetadataMenu,
              pass_kwargs={"base_title": title, "display_items": deeper, "previous_item_type": kind, "previous_rating_key": rating_key})
@@ -273,7 +273,7 @@ def MetadataMenu(rating_key, title=None, base_title=None, display_items=False, p
     oc = ObjectContainer(title2=title, no_cache=True, no_history=True)
 
     if display_items:
-        items = getAllItems(key="children", value=rating_key, base="library/metadata")
+        items = get_all_items(key="children", value=rating_key, base="library/metadata")
         kind, deeper = get_items_info(items)
         dig_tree(oc, items, MetadataMenu,
                  pass_kwargs={"base_title": title, "display_items": deeper, "previous_item_type": kind, "previous_rating_key": rating_key})
@@ -312,19 +312,20 @@ def ItemDetailsMenu(rating_key, title=None, base_title=None, item_title=None, ca
     ))
 
     # get stored subtitle info for item id
-    current_subtitle_info = getSubtitleInfo(rating_key)
+    current_subtitle_info = get_subtitle_info(rating_key)
     if current_subtitle_info:
 
         # get current media info for that item
         media = list(Plex["library"].metadata(rating_key))[0].media
         for part in media.parts:
+            filename = os.path.basename(part.file)
 
             # get corresponding stored subtitle data for that media part (physical media item)
             sub_part_data = current_subtitle_info.get(str(part.id))
             if sub_part_data:
 
                 # iterate through all configured languages
-                for lang_short in config.langList:
+                for lang_short in config.lang_list:
                     sub_data_for_lang = sub_part_data.get(lang_short, {})
 
                     # try getting current subtitle information for that language
@@ -350,8 +351,9 @@ def ItemDetailsMenu(rating_key, title=None, base_title=None, item_title=None, ca
                                    current_subtitle["score"], current_subtitle["storage"], current_subtitle["link"])
 
                     oc.add(DirectoryObject(
-                        key=Callback(RefreshItem, rating_key=rating_key, item_title=item_title),
-                        title=u"Manually list available subtitles for: %s" % os.path.basename(part.file),
+                        key=Callback(TriggerListAvailableSubsForItem, rating_key=rating_key, part_id=part.id, item_title=item_title,
+                                     filename=filename),
+                        title=u"Manually list available subtitles for: %s" % filename,
                         summary=summary
                     ))
 
@@ -360,11 +362,21 @@ def ItemDetailsMenu(rating_key, title=None, base_title=None, item_title=None, ca
     return oc
 
 
+@route(PREFIX + '/item/search/{rating_key}/{part_id}')
+def TriggerListAvailableSubsForItem(rating_key=None, part_id=None, came_from="/recent", item_title=None, filename=None, force=False):
+    assert rating_key, part_id
+    print rating_key, part_id, came_from, item_title, filename
+    #set_refresh_menu_state(u"Triggering %sRefresh for %s" % ("Force-" if force else "", item_title))
+    #Thread.Create(refreshItem, rating_key=rating_key, force=force)
+    #return fatality(randomize=timestamp(), header=u"%s of item %s triggered" % ("Refresh" if not force else "Forced-refresh", rating_key),
+    #                replace_parent=True)
+
+
 @route(PREFIX + '/item/{rating_key}')
 def RefreshItem(rating_key=None, came_from="/recent", item_title=None, force=False):
     assert rating_key
     set_refresh_menu_state(u"Triggering %sRefresh for %s" % ("Force-" if force else "", item_title))
-    Thread.Create(refreshItem, rating_key=rating_key, force=force)
+    Thread.Create(refresh_item, rating_key=rating_key, force=force)
     return fatality(randomize=timestamp(), header=u"%s of item %s triggered" % ("Refresh" if not force else "Forced-refresh", rating_key),
                     replace_parent=True)
 
@@ -450,7 +462,7 @@ def ValidatePrefs():
         Log.Debug("Stop logging to console")
 
     Log.Debug("Setting log-level to %s", Prefs["log_level"])
-    logger.registerLoggingHander(DEPENDENCY_MODULE_NAMES, level=Prefs["log_level"])
+    logger.register_logging_handler(DEPENDENCY_MODULE_NAMES, level=Prefs["log_level"])
     Core.log.setLevel(logging.getLevelName(Prefs["log_level"]))
 
     return
@@ -483,7 +495,7 @@ def ResetStorage(key, randomize=None, sure=False):
         ))
         return oc
 
-    resetStorage(key)
+    reset_storage(key)
 
     if key == "tasks":
         # reinitialize the scheduler
@@ -499,7 +511,7 @@ def ResetStorage(key, randomize=None, sure=False):
 
 @route(PREFIX + '/storage/log')
 def LogStorage(key, randomize=None):
-    logStorage(key)
+    log_storage(key)
     return AdvancedMenu(
         randomize=timestamp(),
         header='Success',
