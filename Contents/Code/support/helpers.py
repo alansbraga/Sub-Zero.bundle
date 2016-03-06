@@ -141,3 +141,8 @@ def query_plex(url, args):
 
     return HTTP.Request(url + ("?%s" % computed_args) if computed_args else "", immediate=True)
 
+
+def get_item_hints(title, kind, series=None):
+    hints = {"expected_title": [title]}
+    hints.update({"type": "episode", "expected_series": [series]} if kind == "series" else {"type": "movie"})
+    return hints
