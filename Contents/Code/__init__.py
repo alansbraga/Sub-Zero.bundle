@@ -198,6 +198,7 @@ class SubZeroAgent(object):
             whack_missing_parts(scanned_parts)
 
             if subtitles:
+                # fixme: doesn't get triggered necessarily
                 save_subtitles(scanned_parts, subtitles)
 
             update_local_media(metadata, media, media_type=self.agent_type)
