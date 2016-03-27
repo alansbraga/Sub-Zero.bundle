@@ -313,49 +313,52 @@ def ItemDetailsMenu(rating_key, title=None, base_title=None, item_title=None, ca
 
     # get stored subtitle info for item id
     current_subtitle_info = get_subtitle_info(rating_key)
-    if current_subtitle_info:
 
-        # get current media info for that item
-        media = list(Plex["library"].metadata(rating_key))[0].media
-        for part in media.parts:
-            filename = os.path.basename(part.file)
+    # get current media info for that item
+    media = list(Plex["library"].metadata(rating_key))[0].media
 
-            # get corresponding stored subtitle data for that media part (physical media item)
-            sub_part_data = current_subtitle_info.get(str(part.id))
-            if sub_part_data:
+    # look for subtitles for all available media parts and all of their languages
+    for part in media.parts:
+        filename = os.path.basename(part.file)
 
-                # iterate through all configured languages
-                for lang_short in config.lang_list:
-                    sub_data_for_lang = sub_part_data.get(lang_short, {})
+        # get corresponding stored subtitle data for that media part (physical media item)
+        sub_part_data = current_subtitle_info.get(str(part.id), {})
 
-                    # try getting current subtitle information for that language
-                    current_subtitle_key = sub_data_for_lang.get("current", (None, None))
-                    current_sub_provider_name, current_sub_id = current_subtitle_key
+        # iterate through all configured languages
+        for lang_short in config.lang_list:
+            sub_data_for_lang = sub_part_data.get(lang_short, {})
 
-                    legacy_storage = False
+            # try getting current subtitle information for that language
+            current_subtitle_key = sub_data_for_lang.get("current", (None, None))
+            current_sub_provider_name, current_sub_id = current_subtitle_key
 
-                    # old storage version; take newest subtitle as current
-                    if not current_sub_provider_name:
-                        current_subtitle_key = \
-                            sorted([(sub["date_added"], key) for key, sub in sub_data_for_lang.iteritems()], None, None, True)[0][1]
-                        current_sub_provider_name, current_sub_id = current_subtitle_key
-                        legacy_storage = True
+            legacy_storage = False
 
-                    summary = u"No current subtitle in storage"
-                    if current_sub_provider_name:
-                        current_subtitle = sub_part_data[lang_short][current_subtitle_key]
+            # old storage version; take newest subtitle as current if available
+            if not current_sub_provider_name:
+                subtitle_keys = sorted([(sub["date_added"], key) for key, sub in sub_data_for_lang.iteritems()], None, None, True)
+                current_subtitle_key = None, None
+                if subtitle_keys:
+                    current_subtitle_key = subtitle_keys[0][1]
 
-                        summary = u"Current subtitle%s: %s (added: %s), Language: %s, Score: %i, Storage: %s, From: %s" % \
-                                  (u" (legacy/inaccurate)" if legacy_storage else "", current_sub_provider_name,
-                                   current_subtitle["date_added"].strftime("%Y-%m-%d %H:%M:%S"), lang_short,
-                                   current_subtitle["score"], current_subtitle["storage"], current_subtitle["link"])
+                current_sub_provider_name, current_sub_id = current_subtitle_key
+                legacy_storage = True
 
-                    oc.add(DirectoryObject(
-                        key=Callback(TriggerListAvailableSubsForItem, rating_key=rating_key, part_id=part.id, item_title=item_title,
-                                     filename=filename),
-                        title=u"Manually list available subtitles for: %s" % filename,
-                        summary=summary
-                    ))
+            summary = u"No current subtitle in storage"
+            if current_sub_provider_name:
+                current_subtitle = sub_part_data[lang_short][current_subtitle_key]
+
+                summary = u"Current subtitle%s: %s (added: %s), Language: %s, Score: %i, Storage: %s, From: %s" % \
+                          (u" (legacy/inaccurate)" if legacy_storage else "", current_sub_provider_name,
+                           current_subtitle["date_added"].strftime("%Y-%m-%d %H:%M:%S"), lang_short,
+                           current_subtitle["score"], current_subtitle["storage"], current_subtitle["link"])
+
+            oc.add(DirectoryObject(
+                key=Callback(TriggerListAvailableSubsForItem, rating_key=rating_key, part_id=part.id, item_title=item_title,
+                             filename=filename),
+                title=u"Available subtitles for: %s, %s" % (lang_short, filename),
+                summary=summary
+            ))
 
     add_ignore_options(oc, "videos", title=item_title, rating_key=rating_key, callback_menu=IgnoreMenu)
 

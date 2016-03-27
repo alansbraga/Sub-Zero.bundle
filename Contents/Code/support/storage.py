@@ -5,7 +5,7 @@ import pprint
 
 
 def get_subtitle_info(rating_key):
-    return Dict["subs"].get(rating_key)
+    return Dict["subs"].get(rating_key, {})
 
 
 def whack_missing_parts(videos, existing_parts=None):
