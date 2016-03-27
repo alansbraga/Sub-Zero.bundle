@@ -14,6 +14,7 @@ from support.items import get_recent_items, get_items_info
 from support.lib import Plex, lib_unaccessible_error
 from support.missing_subtitles import items_get_all_missing_subs
 from support.storage import reset_storage, log_storage, get_subtitle_info
+from support.plex_media import scan_parts
 
 # init GUI
 ObjectContainer.art = R(ART)
@@ -297,7 +298,7 @@ def IgnoreListMenu():
 
 
 @route(PREFIX + '/item/{rating_key}/actions')
-def ItemDetailsMenu(rating_key, title=None, base_title=None, item_title=None, came_from="/recent"):
+def ItemDetailsMenu(rating_key, title=None, base_title=None, item_title=None, randomize=None):
     title = unicode(base_title) + " > " + unicode(title) if base_title else unicode(title)
     oc = ObjectContainer(title2=title, replace_parent=True)
     oc.add(DirectoryObject(
@@ -314,8 +315,11 @@ def ItemDetailsMenu(rating_key, title=None, base_title=None, item_title=None, ca
     # get stored subtitle info for item id
     current_subtitle_info = get_subtitle_info(rating_key)
 
+    # get the plex item
+    plex_item = list(Plex["library"].metadata(rating_key))[0]
+
     # get current media info for that item
-    media = list(Plex["library"].metadata(rating_key))[0].media
+    media = plex_item.media
 
     # look for subtitles for all available media parts and all of their languages
     for part in media.parts:
@@ -354,8 +358,8 @@ def ItemDetailsMenu(rating_key, title=None, base_title=None, item_title=None, ca
                            current_subtitle["score"], current_subtitle["storage"], current_subtitle["link"])
 
             oc.add(DirectoryObject(
-                key=Callback(TriggerListAvailableSubsForItem, rating_key=rating_key, part_id=part.id, item_title=item_title,
-                             filename=filename),
+                key=Callback(TriggerListAvailableSubsForItem, rating_key=rating_key, part_id=part.id, title=title, item_title=item_title,
+                             item_type=plex_item.type, filename=filename),
                 title=u"Available subtitles for: %s, %s" % (lang_short, filename),
                 summary=summary
             ))
@@ -365,14 +369,34 @@ def ItemDetailsMenu(rating_key, title=None, base_title=None, item_title=None, ca
     return oc
 
 
+MANUAL_SUB_SEARCH = {}
+
+
 @route(PREFIX + '/item/search/{rating_key}/{part_id}')
-def TriggerListAvailableSubsForItem(rating_key=None, part_id=None, came_from="/recent", item_title=None, filename=None, force=False):
+def TriggerListAvailableSubsForItem(rating_key=None, part_id=None, title=None, item_title=None, filename=None,
+                                    item_type="episode", force=False):
     assert rating_key, part_id
-    print rating_key, part_id, came_from, item_title, filename
-    #set_refresh_menu_state(u"Triggering %sRefresh for %s" % ("Force-" if force else "", item_title))
-    #Thread.Create(refreshItem, rating_key=rating_key, force=force)
-    #return fatality(randomize=timestamp(), header=u"%s of item %s triggered" % ("Refresh" if not force else "Forced-refresh", rating_key),
+    plex_item = list(Plex["library"].metadata(rating_key))[0]
+    media = plex_item.media
+    current_part = None
+    for part in media.parts:
+        if str(part.id) == part_id:
+            current_part = part
+
+    if not current_part:
+        raise ValueError("Part unknown")
+
+    if item_type == "episode":
+        media_part = {"video": current_part, "type": item_type, "title": plex_item.title, "series": plex_item.show.title, "id": rating_key}
+    else:
+        media_part = {"video": current_part, "type": "movie", "title": plex_item.title, "id": rating_key}
+    print scan_parts([media_part], kind="series" if item_type == "episode" else "movie")
+
+    # set_refresh_menu_state(u"Triggering %sRefresh for %s" % ("Force-" if force else "", item_title))
+    # Thread.Create(refreshItem, rating_key=rating_key, force=force)
+    # return fatality(randomize=timestamp(), header=u"%s of item %s triggered" % ("Refresh" if not force else "Forced-refresh", rating_key),
     #                replace_parent=True)
+    return ItemDetailsMenu(rating_key, randomize=timestamp(), title=title, item_title=item_title)
 
 
 @route(PREFIX + '/item/{rating_key}')
