@@ -46,6 +46,20 @@
     "secure": "true"
   },
   {
+    "id": "provider.legendastv.username",
+    "label": "Legendas.TV Username",
+    "type": "text",
+    "default": ""
+  },
+  {
+    "id": "provider.legendastv.password",
+    "label": "Legendas.TV Password",
+    "type": "text",
+    "option": "hidden",
+    "default": "",
+    "secure": "true"
+  },
+  {
     "id": "provider.opensubtitles.username",
     "label": "Opensubtitles Username (VIP)",
     "type": "text",
@@ -253,6 +267,12 @@
   {
     "id": "provider.addic7ed.enabled",
     "label": "Provider: Enable Addic7ed",
+    "type": "bool",
+    "default": "true"
+  },
+  {
+    "id": "provider.legendastv.enabled",
+    "label": "Provider: Enable Legendas.TV",
     "type": "bool",
     "default": "true"
   },
