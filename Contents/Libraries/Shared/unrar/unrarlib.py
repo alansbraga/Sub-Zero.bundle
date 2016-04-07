@@ -31,7 +31,7 @@ __all__ = ["RAROpenArchiveDataEx", "RARHeaderDataEx", "RAROpenArchiveEx",
            "UNRARCALLBACK", "dostime_to_timetuple"]
 
 
-lib_path = os.environ.get('UNRAR_LIB_PATH', os.path.dirname(__file__))
+lib_path = os.environ.get('UNRAR_LIB_PATH', os.path.join(os.path.dirname(__file__), 'unrar'))
 
 # find and load unrar library
 unrarlib = None
