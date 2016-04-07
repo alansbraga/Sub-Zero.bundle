@@ -31,7 +31,7 @@ __all__ = ["RAROpenArchiveDataEx", "RARHeaderDataEx", "RAROpenArchiveEx",
            "UNRARCALLBACK", "dostime_to_timetuple"]
 
 
-lib_path = os.environ.get('UNRAR_LIB_PATH', os.path.realpath(os.getcwd() + '/../../../Plug-ins/LegendasTV.bundle/Contents/Libraries/Shared/unrar/unrar'))
+lib_path = os.environ.get('UNRAR_LIB_PATH', os.path.dirname(__file__))
 
 # find and load unrar library
 unrarlib = None
