@@ -34,6 +34,16 @@ class LegendasTVSubtitle(Subtitle):
     def get_matches(self, video, hearing_impaired=False):
         matches = super(LegendasTVSubtitle, self).get_matches(video, hearing_impaired=hearing_impaired)
 
+        # release_group 
+        if video.release_group and video.release_group.lower() in self.filename.lower():
+            matches.add('release_group')
+        # resolution 
+        if video.resolution and video.resolution.lower() in self.filename.lower():
+            matches.add('resolution')
+        # format 
+        if video.format and video.format.lower() in self.filename.lower():
+            matches.add('format')
+
         # episode
         if isinstance(video, Episode):
             matches |= guess_matches(video, guess_episode_info(self.filename + '.mkv'))
