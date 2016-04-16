@@ -59,12 +59,13 @@ class LegendasTVProvider(Provider):
     ]}
     server_url = 'http://legendas.tv/'
 
-    def __init__(self, username=None, password=None):
+    def __init__(self, username=None, password=None, epScore=0):
         if username is not None and password is None or username is None and password is not None:
             raise ConfigurationError('Username and password must be specified')
 
         self.username = username
         self.password = password
+        self.epScore = epScore
         self.logged_in = False
 
     def initialize(self):
@@ -152,8 +153,8 @@ class LegendasTVProvider(Provider):
 
         try:
             for sub, score in scored_subtitles:
-                if isinstance(subtitle.video, Episode) and score < 120:
-                    logger.debug('Ignoring low score episode archive')
+                if isinstance(subtitle.video, Episode) and score < self.epScore:
+                    logger.debug('Discarding low score episode archive (%d < %d)', (score, self.epScore))
                     break
                 
                 logger.info('Saving best match from archive: %r', sub.filename)
