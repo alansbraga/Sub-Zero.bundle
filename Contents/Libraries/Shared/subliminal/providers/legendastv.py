@@ -154,7 +154,7 @@ class LegendasTVProvider(Provider):
         try:
             for sub, score in scored_subtitles:
                 if isinstance(subtitle.video, Episode) and score < self.epScore:
-                    logger.debug('Discarding low score episode archive (%d < %d)', (score, self.epScore))
+                    logger.debug('Discarding low score episode archive (%d < %d)', score, self.epScore)
                     break
                 
                 logger.info('Saving best match from archive: %r', sub.filename)
