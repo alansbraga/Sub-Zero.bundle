@@ -100,7 +100,7 @@ class LegendasTVProvider(Provider):
           termo = video.series + ' S%02d' % video.season + 'E%02d' % video.episode
         else:
           termo = video.title
-        url = self.server_url + 'legenda/busca/' + termo
+        url = self.server_url + 'legenda/busca/' + termo.replace("'", "*")
         logger.info('Opening search page: %r', url)
         r = self.session.get(url, params={}, timeout=10)
         r.raise_for_status()
