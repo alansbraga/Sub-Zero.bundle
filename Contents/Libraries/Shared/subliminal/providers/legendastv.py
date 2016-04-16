@@ -159,18 +159,21 @@ class LegendasTVProvider(Provider):
         scored_subtitles = sorted([(s, compute_score(s.get_matches(subtitle.video), subtitle.video))
                                     for s in subs], key=operator.itemgetter(1), reverse=True)
 
-        for sub, score in scored_subtitles:
-            if isinstance(subtitle.video, Episode) and score < self.epScore:
-                logger.error('Discarding low score episode archive (%d < %d)', score, self.epScore)
-                subtitle.content = "!!!INVALID!!!"
+        try:
+            for sub, score in scored_subtitles:
+                if isinstance(subtitle.video, Episode) and score < self.epScore:
+                    logger.error('Discarding low score episode archive (%d < %d)', score, self.epScore)
+                    subtitle.content = "!!!INVALID!!!"
+                    break
+                
+                logger.info('Saving best match from archive: %r', sub.filename)
+                if r.url.endswith('.rar'):
+                    subtitle.content = fix_line_ending(archive.read_files(sub.filename)[0][1])
+                elif r.url.endswith('.zip'):
+                    subtitle.content = fix_line_ending(archive.read(sub.filename))
                 break
-            
-            logger.info('Saving best match from archive: %r', sub.filename)
-            if r.url.endswith('.rar'):
-                subtitle.content = fix_line_ending(archive.read_files(sub.filename)[0][1])
-            elif r.url.endswith('.zip'):
-                subtitle.content = fix_line_ending(archive.read(sub.filename))
-            break
+        except:
+            logger.error('Error saving .srt file')
 
         if r.url.endswith('.rar'):
             os.remove('DataItems/tempsub.rar')
