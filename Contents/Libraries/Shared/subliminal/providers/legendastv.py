@@ -43,6 +43,14 @@ class LegendasTVSubtitle(Subtitle):
         # format 
         if video.format and video.format.lower() in self.filename.lower():
             matches.add('format')
+            
+        # remove ' from series to improve matches
+        if video.series:
+            video.series = video.series.replace("'", "")
+
+        # prevent title from matching as it is counted as 0 for episodes
+        if isinstance(video, Episode) and video.title:
+            video.title = None
 
         # episode
         if isinstance(video, Episode):
@@ -151,20 +159,18 @@ class LegendasTVProvider(Provider):
         scored_subtitles = sorted([(s, compute_score(s.get_matches(subtitle.video), subtitle.video))
                                     for s in subs], key=operator.itemgetter(1), reverse=True)
 
-        try:
-            for sub, score in scored_subtitles:
-                if isinstance(subtitle.video, Episode) and score < self.epScore:
-                    logger.debug('Discarding low score episode archive (%d < %d)', score, self.epScore)
-                    break
-                
-                logger.info('Saving best match from archive: %r', sub.filename)
-                if r.url.endswith('.rar'):
-                    subtitle.content = fix_line_ending(archive.read_files(sub.filename)[0][1])
-                elif r.url.endswith('.zip'):
-                    subtitle.content = fix_line_ending(archive.read(sub.filename))
+        for sub, score in scored_subtitles:
+            if isinstance(subtitle.video, Episode) and score < self.epScore:
+                logger.error('Discarding low score episode archive (%d < %d)', score, self.epScore)
+                subtitle.content = "!!!INVALID!!!"
                 break
-        except:
-            logger.error('Error saving .srt file')
+            
+            logger.info('Saving best match from archive: %r', sub.filename)
+            if r.url.endswith('.rar'):
+                subtitle.content = fix_line_ending(archive.read_files(sub.filename)[0][1])
+            elif r.url.endswith('.zip'):
+                subtitle.content = fix_line_ending(archive.read(sub.filename))
+            break
 
         if r.url.endswith('.rar'):
             os.remove('DataItems/tempsub.rar')
