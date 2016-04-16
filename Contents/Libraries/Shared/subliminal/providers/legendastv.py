@@ -152,8 +152,11 @@ class LegendasTVProvider(Provider):
 
         try:
             for sub, score in scored_subtitles:
+                if isinstance(subtitle.video, Episode) and score < 120:
+                    logger.debug('Ignoring low score episode archive')
+                    break
+                
                 logger.info('Saving best match from archive: %r', sub.filename)
-    
                 if r.url.endswith('.rar'):
                     subtitle.content = fix_line_ending(archive.read_files(sub.filename)[0][1])
                 elif r.url.endswith('.zip'):
