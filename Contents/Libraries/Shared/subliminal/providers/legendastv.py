@@ -65,7 +65,7 @@ class LegendasTVProvider(Provider):
 
         self.username = username
         self.password = password
-        self.epScore = epScore
+        self.epScore = int(epScore)
         self.logged_in = False
 
     def initialize(self):
