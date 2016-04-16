@@ -114,7 +114,8 @@ class Config(object):
                                                'use_tag_search': Prefs['provider.opensubtitles.use_tags']
                                                },
                              'legendastv': {'username': Prefs['provider.legendastv.username'],
-                                            'password': Prefs['provider.legendastv.password']
+                                            'password': Prefs['provider.legendastv.password'],
+                                            'epScore': Prefs['provider.legendastv.epScore']
                                            },
                              }
 

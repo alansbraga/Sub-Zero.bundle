@@ -43,6 +43,14 @@ class LegendasTVSubtitle(Subtitle):
         # format 
         if video.format and video.format.lower() in self.filename.lower():
             matches.add('format')
+            
+        # remove ' from series to improve matches
+        if video.series:
+            video.series = video.series.replace("'", "")
+
+        # prevent title from matching as it is counted as 0 for episodes
+        if isinstance(video, Episode) and video.title:
+            video.title = None
 
         # episode
         if isinstance(video, Episode):
@@ -59,12 +67,13 @@ class LegendasTVProvider(Provider):
     ]}
     server_url = 'http://legendas.tv/'
 
-    def __init__(self, username=None, password=None):
+    def __init__(self, username=None, password=None, epScore=0):
         if username is not None and password is None or username is None and password is not None:
             raise ConfigurationError('Username and password must be specified')
 
         self.username = username
         self.password = password
+        self.epScore = int(epScore)
         self.logged_in = False
 
     def initialize(self):
@@ -152,8 +161,9 @@ class LegendasTVProvider(Provider):
 
         try:
             for sub, score in scored_subtitles:
-                if isinstance(subtitle.video, Episode) and score < 120:
-                    logger.debug('Ignoring low score episode archive')
+                if isinstance(subtitle.video, Episode) and score < self.epScore:
+                    logger.error('Discarding low score episode archive (%d < %d)', score, self.epScore)
+                    subtitle.content = "!!!INVALID!!!"
                     break
                 
                 logger.info('Saving best match from archive: %r', sub.filename)
