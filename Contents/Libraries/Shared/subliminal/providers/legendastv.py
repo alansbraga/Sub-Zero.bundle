@@ -45,7 +45,7 @@ class LegendasTVSubtitle(Subtitle):
             matches.add('format')
             
         # remove ' from series to improve matches
-        if video.series:
+        if isinstance(video, Episode) and video.series:
             video.series = video.series.replace("'", "")
 
         # prevent title from matching as it is counted as 0 for episodes
