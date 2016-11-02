@@ -1,8 +1,10 @@
 # coding=utf-8
 
-import re, unicodedata, os
+import re, os
 import config
 import helpers
+
+from bs4 import UnicodeDammit
 
 
 class SubtitleHelper(object):
@@ -10,7 +12,7 @@ class SubtitleHelper(object):
         self.filename = filename
 
 
-def SubtitleHelpers(filename):
+def subtitle_helpers(filename):
     filename = helpers.unicodize(filename)
     for cls in [VobSubSubtitleHelper, DefaultSubtitleHelper]:
         if cls.is_helper_for(filename):
@@ -135,7 +137,7 @@ class DefaultSubtitleHelper(SubtitleHelper):
         return lang_sub_map
 
 
-def getSubtitlesFromMetadata(part):
+def get_subtitles_from_metadata(part):
     subs = {}
     for language in part.subtitles:
         subs[language] = []
@@ -151,3 +153,15 @@ def getSubtitlesFromMetadata(part):
                 Log.Debug(u"Found metadata subtitle: %s, %s" % (language, repr(proxy)))
                 subs[language].append(key)
     return subs
+
+
+def force_utf8(content):
+    a = UnicodeDammit(content)
+
+    Log.Debug("detected encoding: %s (None: most likely already successfully decoded)" % a.original_encoding)
+
+    # easy way out - already utf-8
+    if a.original_encoding and a.original_encoding == "utf-8":
+        return content
+
+    return (a.unicode_markup if a.unicode_markup else content.decode('ascii', 'replace')).encode("utf-8")

@@ -1,3 +1,56 @@
+1.3.46.606
+- core: hotfix for new users (who've never downloaded a subtitle with SZ before); fixes #169
+
+
+1.3.46.605
+
+- add wiki (thanks @ukdtom / @dane22)
+- core: remove necessity of Plex credentials; fixes #148
+- core: fix non-SRT subtitle support; fixes #138
+- core: generic source overhaul in preparation for release 1.4
+- core: better filesystem encoding detection; may fix #159
+- core: add encoding handling for windows-1250 and windows-1251 encoding (eastern europe); fixes #162
+- core: overhaul ignore handling; fixes #164
+- core: implement ignore by path setting; fixes #134
+- core: add setting for optional fallback to metadata storage, if filesystem storage failed; fixes #100
+- core: add setting for notifying an executable after a subtitle has been downloaded (see Wiki); fixes #65
+- core: only handle sections for which Sub-Zero is enabled (in PMS agent settings); fixes #167
+- menu: add series/season force-refresh
+- menu: show item thumbnail/art where applicable
+- menu: mitigate PlexWeb behaviour of calling our handlers twice; fixes #168
+
+
+1.3.33.522
+
+- core: fix library permission detection on windows; fixes #151
+- core: "Restrict to one language" now behaves like it should (one found subtitle of any language is treated as sufficient); fixes #149
+- core: add support for other subtitle formats such as ssa/ass/microdvd, convert to srt; fixes #138
+- core: hopefully more consistent force-refresh handling (intent); fixes #118
+
+
+1.3.31.513
+
+- core: add option to only download one language again (and skip the addition of .lang to the subtitle filename) (default: off); fixes #126 
+- core: add option to always encode saved subtitles to UTF-8 (default: on); fixes #128
+- core: add fallback encoding detection using bs4.UnicodeDammit; hopefully fixes #101
+- core: update libraries: chardet, beautifulsoup, six
+- menu/core: check Plex libraries for permission problems on plugin start and report them in the channel menu (option, default: on); fixes #143
+- menu: while a manual refresh takes place, add a refresh button to the top of the SZ menu for convenience
+- menu: move the "add/remove X to ignore list" menu item to the bottom of the list on item detail 
+
+
+1.3.27.491
+
+- menu/core: make Sub-Zero channel menu optional (setting: "Enable Sub-Zero channel (disabling doesn't affect the subtitle features)?")
+- OpenSubtitles: detect and match video/subtitle FPS (framerate) to reduce out of sync subtitle matches
+- core: internal fixes; add _markerlib library (rare)
+- core: don't score tvshow episode title matches, should improve episode subtitle matches quite a bit (and reduce out of sync subtitles)
+- OpenSubtitles: make tag/exact filename matches optional (setting: "I keep the exact (release-) filename of my media files")
+- menu: unicode video title errors fixed
+- TVSubtitles: correctly match certain show IDs (such as "Series Name (US)")
+- core: don't break subtitle evaluation on crashed guessing
+
+
 1.3.23.459
 
 - core: slight code cleanup and fixes

@@ -1,69 +1,85 @@
 # coding=utf-8
 
 import datetime
+import threading
+
+lock = threading.Lock()
 
 
-class TempIntent(dict):
+class TempIntent(object):
     timeout = 1000  # milliseconds
     store = None
 
-    def __init__(self, timeout=1000):
+    def __init__(self, timeout=1000, store=None):
         self.timeout = timeout
-        self.store = {}
+        if store is None:
+            raise NotImplementedError
 
-    def __getattr__(self, name):
-        if name in self:
-            return self[name]
+        self.store = store
 
-    def __setattr__(self, name, value):
-        self[name] = value
+    def get(self, kind, *keys):
+        with lock:
+            # iter all requested keys
+            for key in keys:
+                hit = False
 
-    def __delattr__(self, name):
-        if name in self:
-            del self[name]
-
-    def get(self, kind, key):
-        if kind in self["store"]:
-            now = datetime.datetime.now()
-            hit = False
-            for known_key in self["store"][kind].keys():
-                # may need locking, for now just play it safe
-                ends = self["store"][kind].get(known_key, None)
-                if not ends:
+                # skip key if invalid
+                if not key:
                     continue
 
-                timed_out = False
-                if now > ends:
-                    timed_out = True
+                # valid kind?
+                if kind in self.store:
+                    now = datetime.datetime.now()
 
-                if known_key == key and not timed_out:
-                    hit = True
+                    # iter all known kinds (previously created)
+                    for known_key in self.store[kind].keys():
+                        # may need locking, for now just play it safe
+                        ends = self.store[kind].get(known_key, None)
+                        if not ends:
+                            continue
 
-                if timed_out:
-                    try:
-                        del self["store"][kind][key]
-                    except:
-                        continue
+                        timed_out = False
+                        if now > ends:
+                            timed_out = True
 
-            if hit:
-                return True
+                        # key and kind in storage, and not timed out = hit
+                        if known_key == key and not timed_out:
+                            hit = True
+
+                        if timed_out:
+                            try:
+                                del self.store[kind][key]
+                            except:
+                                continue
+
+                    if hit:
+                        return True
         return False
 
     def resolve(self, kind, key):
-        if kind in self["store"] and key in self["store"][kind]:
-            del self["store"][kind][key]
-            return True
-        return False
+        with lock:
+            if kind in self.store and key in self.store[kind]:
+                del self.store[kind][key]
+                return True
+            return False
 
     def set(self, kind, key, timeout=None):
-        if kind not in self["store"]:
-            self["store"][kind] = {}
-        self["store"][kind][key] = datetime.datetime.now() + datetime.timedelta(milliseconds=timeout or self.timeout)
+        with lock:
+            if kind not in self.store:
+                self.store[kind] = {}
+            self.store[kind][key] = datetime.datetime.now() + datetime.timedelta(milliseconds=timeout or self.timeout)
 
     def has(self, kind, key):
-        if kind not in self["store"]:
-            return False
-        return key in self["store"][kind]
+        with lock:
+            if kind not in self.store:
+                return False
+            return key in self.store[kind]
 
+    def cleanup(self):
+        now = datetime.datetime.now()
+        for kind, data in self.store.items():
+            for key, timeout in data.items():
+                if now > timeout:
+                    del self.store[kind][key]
+        self.store.save()
 
-intent = TempIntent()

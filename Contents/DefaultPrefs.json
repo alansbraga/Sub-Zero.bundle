@@ -18,20 +18,6 @@
     "default": "2"
   },
   {
-    "id": "plex_username",
-    "label": "Plex.tv Username (needed for Plex Home users)",
-    "type": "text",
-    "default": ""
-  },
-  {
-    "id": "plex_password",
-    "label": "Plex.tv Password",
-    "type": "text",
-    "option": "hidden",
-    "default": "",
-    "secure": "true"
-  },
-  {
     "id": "provider.addic7ed.username",
     "label": "Addic7ed Username",
     "type": "text",
@@ -247,6 +233,18 @@
     "default": "None"
   },
   {
+    "id": "subtitles.only_one",
+    "label": "Restrict to one language (skips adding \".lang.\" to the subtitle filename; only uses \"Subtitle Language (1)\")",
+    "type": "bool",
+    "default": "false"
+  },
+  {
+    "id": "subtitles.enforce_encoding",
+    "label": "Normalize subtitle encoding to UTF-8",
+    "type": "bool",
+    "default": "true"
+  },
+  {
     "id": "provider.opensubtitles.enabled",
     "label": "Provider: Enable OpenSubtitles",
     "type": "bool",
@@ -271,6 +269,7 @@
     "default": "true"
   },
   {
+<<<<<<< HEAD
     "id": "provider.legendastv.enabled",
     "label": "Provider: Enable Legendas.TV",
     "type": "bool",
@@ -281,6 +280,36 @@
     "label": "Addic7ed: prefer over other providers (if requirements met)",
     "type": "bool",
     "default": "false"
+=======
+    "id": "provider.addic7ed.boost_by",
+    "label": "Addic7ed: boost score (if requirements met)",
+    "type": "enum",
+    "values": [
+      "100",
+      "95",
+      "90",
+      "85",
+      "80",
+      "75",
+      "70",
+      "67",
+      "65",
+      "60",
+      "55",
+      "50",
+      "45",
+      "40",
+      "35",
+      "30",
+      "25",
+      "20",
+      "15",
+      "10",
+      "5",
+      "0"
+    ],
+    "default": "10"
+>>>>>>> refs/remotes/pannal/master
   },
   {
     "id": "provider.tvsubtitles.enabled",
@@ -440,6 +469,12 @@
     "default": ""
   },
   {
+    "id": "subtitles.save.metadata_fallback",
+    "label": "Fall back to metadata storage if filesystem storage failed",
+    "type": "bool",
+    "default": "false"
+  },
+  {
     "id": "subtitles.language.ietf",
     "label": "Treat IETF language tags as ISO 639-1 (e.g. pt-BR = pt)",
     "type": "bool",
@@ -450,6 +485,18 @@
     "label": "Ignore folders (with \"subzero.ignore/.subzero.ignore/.nosz\" files in them)",
     "type": "bool",
     "default": "false"
+  },
+  {
+      "id": "subtitles.ignore_paths",
+      "label": "Ignore anything in the following paths (comma-separated)",
+      "type": "text",
+      "default": ""
+  },
+  {
+      "id": "notify_executable",
+      "label": "Call this executable upon successful subtitle download",
+      "type": "text",
+      "default": ""
   },
   {
     "id": "scheduler.tasks.searchAllRecentlyAddedMissing",
@@ -488,6 +535,12 @@
     "label": "Scheduler: Recent items to consider per library",
     "type": "text",
     "default": "200"
+  },
+  {
+    "id": "check_permissions",
+    "label": "Check for correct folder permissions of every library on plugin start",
+    "type": "bool",
+    "default": "true"
   },
   {
     "id": "log_level",
