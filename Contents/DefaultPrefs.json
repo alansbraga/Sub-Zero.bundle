@@ -32,20 +32,6 @@
     "secure": "true"
   },
   {
-    "id": "provider.legendastv.username",
-    "label": "Legendas.TV Username",
-    "type": "text",
-    "default": ""
-  },
-  {
-    "id": "provider.legendastv.password",
-    "label": "Legendas.TV Password",
-    "type": "text",
-    "option": "hidden",
-    "default": "",
-    "secure": "true"
-  },
-  {
     "id": "provider.opensubtitles.username",
     "label": "Opensubtitles Username (VIP)",
     "type": "text",
@@ -54,6 +40,20 @@
   {
     "id": "provider.opensubtitles.password",
     "label": "Opensubtitles Password",
+    "type": "text",
+    "option": "hidden",
+    "default": "",
+    "secure": "true"
+  },
+  {
+    "id": "provider.legendastv.username",
+    "label": "Legendas.TV Username",
+    "type": "text",
+    "default": ""
+  },
+  {
+    "id": "provider.legendastv.password",
+    "label": "Legendas.TV Password",
     "type": "text",
     "option": "hidden",
     "default": "",
@@ -269,18 +269,6 @@
     "default": "true"
   },
   {
-<<<<<<< HEAD
-    "id": "provider.legendastv.enabled",
-    "label": "Provider: Enable Legendas.TV",
-    "type": "bool",
-    "default": "true"
-  },
-  {
-    "id": "provider.addic7ed.boost",
-    "label": "Addic7ed: prefer over other providers (if requirements met)",
-    "type": "bool",
-    "default": "false"
-=======
     "id": "provider.addic7ed.boost_by",
     "label": "Addic7ed: boost score (if requirements met)",
     "type": "enum",
@@ -309,11 +297,16 @@
       "0"
     ],
     "default": "10"
->>>>>>> refs/remotes/pannal/master
   },
   {
     "id": "provider.tvsubtitles.enabled",
     "label": "Provider: Enable TVsubtitles.net",
+    "type": "bool",
+    "default": "true"
+  },
+  {
+    "id": "provider.legendastv.enabled",
+    "label": "Provider: Enable Legendas.TV",
     "type": "bool",
     "default": "true"
   },
