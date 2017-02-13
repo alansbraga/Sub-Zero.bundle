@@ -3,11 +3,16 @@
 import os
 import re
 import inspect
+
+import datetime
+
+import subliminal
+import subliminal_patch
 from babelfish import Language
 from subzero.lib.io import FileIO, get_viable_encoding
 from subzero.constants import PLUGIN_NAME, PLUGIN_IDENTIFIER, MOVIE, SHOW
 from lib import Plex
-from helpers import check_write_permissions
+from helpers import check_write_permissions, cast_bool
 
 SUBTITLE_EXTS = ['utf', 'utf8', 'utf-8', 'srt', 'smi', 'rt', 'ssa', 'aqt', 'jss', 'ass', 'idx', 'sub', 'txt', 'psb']
 VIDEO_EXTS = ['3g2', '3gp', 'asf', 'asx', 'avc', 'avi', 'avs', 'bivx', 'bup', 'divx', 'dv', 'dvr-ms', 'evo', 'fli', 'flv',
@@ -30,6 +35,13 @@ def int_or_default(s, default):
 class Config(object):
     version = None
     full_version = None
+    enable_channel = True
+    enable_agent = True
+    pin = None
+    lock_menu = False
+    lock_advanced_menu = False
+    locked = False
+    pin_valid_minutes = 10
     lang_list = None
     subtitle_destination_folder = None
     providers = None
@@ -37,11 +49,15 @@ class Config(object):
     max_recent_items_per_library = 200
     permissions_ok = False
     missing_permissions = None
+    ignore_sz_files = False
     ignore_paths = None
     fs_encoding = None
     notify_executable = None
     sections = None
     enabled_sections = None
+    enforce_encoding = False
+    chmod = None
+    forced_only = False
 
     initialized = False
 
@@ -49,18 +65,60 @@ class Config(object):
         self.fs_encoding = get_viable_encoding()
         self.version = self.get_version()
         self.full_version = u"%s %s" % (PLUGIN_NAME, self.version)
+
+        self.set_plugin_mode()
+        self.set_plugin_lock()
+
         self.lang_list = self.get_lang_list()
         self.subtitle_destination_folder = self.get_subtitle_destination_folder()
         self.providers = self.get_providers()
         self.provider_settings = self.get_provider_settings()
-        self.max_recent_items_per_library = int_or_default(Prefs["scheduler.max_recent_items_per_library"], 200)
+        self.max_recent_items_per_library = int_or_default(Prefs["scheduler.max_recent_items_per_library"], 2000)
         self.sections = list(Plex["library"].sections())
         self.missing_permissions = []
+        self.ignore_sz_files = cast_bool(Prefs["subtitles.ignore_fs"])
         self.ignore_paths = self.parse_ignore_paths()
         self.enabled_sections = self.check_enabled_sections()
         self.permissions_ok = self.check_permissions()
         self.notify_executable = self.check_notify_executable()
+        self.enforce_encoding = cast_bool(Prefs['subtitles.enforce_encoding'])
+        self.chmod = self.check_chmod()
+        self.forced_only = cast_bool(Prefs["subtitles.only_foreign"])
         self.initialized = True
+
+    def set_plugin_mode(self):
+        if Prefs["plugin_mode"] == "only agent":
+            self.enable_channel = False
+        elif Prefs["plugin_mode"] == "only channel":
+            self.enable_agent = False
+
+    def set_plugin_lock(self):
+        if Prefs["plugin_pin_mode"] in ("channel menu", "advanced menu"):
+            # check pin
+            pin = Prefs["plugin_pin"]
+            if not len(pin):
+                Log.Warn("PIN enabled but not set, disabling PIN!")
+                return
+
+            pin = pin.strip()
+            try:
+                int(pin)
+            except ValueError:
+                Log.Warn("PIN has to be an integer (0-9)")
+            self.pin = pin
+            self.lock_advanced_menu = Prefs["plugin_pin_mode"] == "advanced menu"
+            self.lock_menu = Prefs["plugin_pin_mode"] == "channel menu"
+
+            try:
+                self.pin_valid_minutes = int(Prefs["plugin_pin_valid_for"].strip())
+            except ValueError:
+                pass
+
+    @property
+    def pin_correct(self):
+        if isinstance(Dict["pin_correct_time"], datetime.datetime) \
+                and Dict["pin_correct_time"] + datetime.timedelta(minutes=self.pin_valid_minutes) > datetime.datetime.now():
+            return True
 
     def refresh_permissions_status(self):
         self.permissions_ok = self.check_permissions()
@@ -203,28 +261,38 @@ class Config(object):
         if not Prefs["subtitles.save.filesystem"]:
             return
 
-        fld_custom = Prefs["subtitles.save.subFolder.Custom"].strip() if bool(Prefs["subtitles.save.subFolder.Custom"]) else None
+        fld_custom = Prefs["subtitles.save.subFolder.Custom"].strip() if cast_bool(Prefs["subtitles.save.subFolder.Custom"]) else None
         return fld_custom or (Prefs["subtitles.save.subFolder"] if Prefs["subtitles.save.subFolder"] != "current folder" else None)
 
     def get_providers(self):
-        providers = {'opensubtitles': Prefs['provider.opensubtitles.enabled'],
+        providers = {'opensubtitles': cast_bool(Prefs['provider.opensubtitles.enabled']),
                      #'thesubdb': Prefs['provider.thesubdb.enabled'],
-                     'podnapisi': Prefs['provider.podnapisi.enabled'],
-                     'addic7ed': Prefs['provider.addic7ed.enabled'],
-                     'tvsubtitles': Prefs['provider.tvsubtitles.enabled'],
-                     'legendastv': Prefs['provider.legendastv.enabled']
+                     'podnapisi': cast_bool(Prefs['provider.podnapisi.enabled']),
+                     'addic7ed': cast_bool(Prefs['provider.addic7ed.enabled']),
+                     'tvsubtitles': cast_bool(Prefs['provider.tvsubtitles.enabled']),
+                     'legendastv': cast_bool(Prefs['provider.legendastv.enabled'])
                      }
+
+        # ditch non-forced-subtitles-reporting providers
+        if cast_bool(Prefs['subtitles.only_foreign']):
+            providers["addic7ed"] = False
+            providers["tvsubtitles"] = False
+
         return filter(lambda prov: providers[prov], providers)
 
     def get_provider_settings(self):
         provider_settings = {'addic7ed': {'username': Prefs['provider.addic7ed.username'],
                                           'password': Prefs['provider.addic7ed.password'],
-                                          'use_random_agents': Prefs['provider.addic7ed.use_random_agents'],
+                                          'use_random_agents': cast_bool(Prefs['provider.addic7ed.use_random_agents']),
                                           },
                              'opensubtitles': {'username': Prefs['provider.opensubtitles.username'],
                                                'password': Prefs['provider.opensubtitles.password'],
-                                               'use_tag_search': Prefs['provider.opensubtitles.use_tags']
+                                               'use_tag_search': cast_bool(Prefs['provider.opensubtitles.use_tags']),
+                                               'only_foreign': cast_bool(Prefs['subtitles.only_foreign'])
                                                },
+                             'podnapisi': {
+                                 'only_foreign': cast_bool(Prefs['subtitles.only_foreign'])
+                             },
                              'legendastv': {'username': Prefs['provider.legendastv.username'],
                                             'password': Prefs['provider.legendastv.password'],
                                             'epScore': Prefs['provider.legendastv.epScore']
@@ -233,5 +301,32 @@ class Config(object):
 
         return provider_settings
 
+    def check_chmod(self):
+        val = Prefs["subtitles.save.chmod"]
+        if not val or not len(val):
+            return
+
+        wrong_chmod = False
+        if len(val) != 4:
+            wrong_chmod = True
+
+        try:
+            return int(val, 8)
+        except ValueError:
+            wrong_chmod = True
+
+        if wrong_chmod:
+            Log.Warn("Chmod setting ignored, please use only 4-digit integers with leading 0 (e.g.: 775)")
+
+    def init_subliminal_patches(self):
+        # configure custom subtitle destination folders for scanning pre-existing subs
+        Log.Debug("Patching subliminal ...")
+        dest_folder = self.subtitle_destination_folder
+        subliminal_patch.patch_video.CUSTOM_PATHS = [dest_folder] if dest_folder else []
+        subliminal_patch.patch_video.INCLUDE_EXOTIC_SUBS = cast_bool(Prefs["subtitles.scan.exotic_ext"])
+        subliminal_patch.patch_provider_pool.DOWNLOAD_TRIES = int(Prefs['subtitles.try_downloads'])
+        subliminal.video.Episode.scores["addic7ed_boost"] = int(Prefs['provider.addic7ed.boost_by'])
+
 
 config = Config()
+config.initialize()

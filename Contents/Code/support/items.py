@@ -5,7 +5,7 @@ import re
 import types
 import os
 from ignore import ignore_list
-from helpers import is_recent, format_item, query_plex
+from helpers import is_recent, get_plex_item_display_title, query_plex
 from lib import Plex, get_intent
 from config import config, IGNORE_FN
 
@@ -116,7 +116,7 @@ def get_items(key="recently_added", base="library", value=None, flat=False, add_
             if flat:
                 # return episodes
                 for child in item.children():
-                    items.append(("episode", format_item(child, "show", parent=item, add_section_title=add_section_title), int(item.rating_key),
+                    items.append(("episode", get_plex_item_display_title(child, "show", parent=item, add_section_title=add_section_title), int(item.rating_key),
                                   False, child))
             else:
                 # return seasons
@@ -132,24 +132,19 @@ def get_items(key="recently_added", base="library", value=None, flat=False, add_
 
         elif kind == "episode":
             items.append(
-                (kind, format_item(item, "show", parent=item.season, parent_title=item.show.title, section_title=item.section.title,
-                                   add_section_title=add_section_title), int(item.rating_key), False, item))
+                (kind, get_plex_item_display_title(item, "show", parent=item.season, parent_title=item.show.title, section_title=item.section.title,
+                                                   add_section_title=add_section_title), int(item.rating_key), False, item))
 
         elif kind in ("movie", "artist", "photo"):
-            items.append((kind, format_item(item, kind, section_title=item.section.title, add_section_title=add_section_title),
+            items.append((kind, get_plex_item_display_title(item, kind, section_title=item.section.title, add_section_title=add_section_title),
                           int(item.rating_key), False, item))
 
         elif kind == "show":
             items.append((
-                kind, format_item(item, kind, section_title=item.section.title, add_section_title=add_section_title), int(item.rating_key), True,
+                kind, get_plex_item_display_title(item, kind, section_title=item.section.title, add_section_title=add_section_title), int(item.rating_key), True,
                 item))
 
     return items
-
-
-def get_recently_added_items():
-    items = get_items(key="recently_added")
-    return filter(lambda x: is_recent(x[MI_ITEM].added_at), items)
 
 
 def get_recent_items():
@@ -207,6 +202,10 @@ def get_on_deck_items():
     return get_items(key="on_deck", add_section_title=True)
 
 
+def get_recently_added_items():
+    return get_items(key="recently_added", add_section_title=True, flat=False)
+
+
 def get_all_items(key, base="library", value=None, flat=False):
     return get_items(key, base=base, value=value, flat=flat)
 
@@ -237,7 +236,7 @@ def is_ignored(rating_key, item=None):
         return True
 
     # physical/path ignore
-    if Prefs["subtitles.ignore_fs"] or config.ignore_paths:
+    if config.ignore_sz_files or config.ignore_paths:
         # normally check current item folder and the library
         check_ignore_paths = [".", "../"]
         if kind == "Episode":
@@ -249,7 +248,7 @@ def is_ignored(rating_key, item=None):
                 Log.Debug("Item %s's path is manually ignored" % rating_key)
                 return True
 
-            if Prefs["subtitles.ignore_fs"]:
+            if config.ignore_sz_files:
                 for sub_path in check_ignore_paths:
                     if config.is_physically_ignored(os.path.abspath(os.path.join(os.path.dirname(part.file), sub_path))):
                         Log.Debug("An ignore file exists in either the items or its parent folders")

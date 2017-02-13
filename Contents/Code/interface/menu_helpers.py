@@ -3,9 +3,10 @@ import types
 import datetime
 
 from support.items import get_kind, get_item_thumb
-from support.helpers import format_video
+from support.helpers import get_video_display_title
 from support.ignore import ignore_list
 from support.lib import get_intent
+from support.config import config
 from subzero.constants import ICON
 
 default_thumb = R(ICON)
@@ -46,8 +47,8 @@ def add_ignore_options(oc, kind, callback_menu=None, title=None, rating_key=None
     )
 
 
-def dig_tree(oc, items, menu_callback, menu_determination_callback=None, force_rating_key=None, fill_args=None, pass_kwargs=None,
-             thumb=default_thumb):
+def dig_tree(oc, items, menu_callback, menu_determination_callback=None, force_rating_key=None, fill_args=None,
+             pass_kwargs=None, thumb=default_thumb):
     for kind, title, key, dig_deeper, item in items:
         thumb = get_item_thumb(item) or thumb
 
@@ -57,10 +58,13 @@ def dig_tree(oc, items, menu_callback, menu_determination_callback=None, force_r
         if pass_kwargs:
             add_kwargs.update(pass_kwargs)
 
+        # force details view for show/season
+        summary = " " if kind in ("show", "season") else None
+
         oc.add(DirectoryObject(
-            key=Callback(menu_callback or menu_determination_callback(kind, item), title=title,
+            key=Callback(menu_callback or menu_determination_callback(kind, item, pass_kwargs=pass_kwargs), title=title,
                          rating_key=force_rating_key or key, **add_kwargs),
-            title=title, thumb=thumb
+            title=title, thumb=thumb, summary=summary
         ))
     return oc
 
@@ -90,9 +94,9 @@ def set_refresh_menu_state(state_or_media, media_type="movies"):
             for episode in media.seasons[season].episodes:
                 ep = media.seasons[season].episodes[episode]
                 media_id = ep.id
-                title = format_video("show", ep.title, parent_title=media.title, season=int(season), episode=int(episode))
+                title = get_video_display_title("show", ep.title, parent_title=media.title, season=int(season), episode=int(episode))
     else:
-        title = format_video("movie", media.title)
+        title = get_video_display_title("movie", media.title)
 
     intent = get_intent()
     force_refresh = intent.get("force", media_id)
@@ -119,7 +123,7 @@ def enable_channel_wrapper(func):
 
     def wrap(*args, **kwargs):
         enforce_route = kwargs.pop("enforce_route", None)
-        return (func if Prefs["enable_channel"] or enforce_route else noop)(*args, **kwargs)
+        return (func if config.enable_channel or enforce_route else noop)(*args, **kwargs)
 
     return wrap
 
@@ -153,7 +157,31 @@ def debounce(func):
 
 class SZObjectContainer(ObjectContainer):
     def __init__(self, *args, **kwargs):
+        skip_pin_lock = kwargs.pop("skip_pin_lock", False)
+
         super(SZObjectContainer, self).__init__(*args, **kwargs)
+
+        if (config.lock_menu or config.lock_advanced_menu) and not config.pin_correct and not skip_pin_lock:
+            config.locked = True
+
+    def add(self, *args, **kwargs):
+        # disable self.add if we're in lockdown
+        container = args[0]
+        current_menu_target = container.key.split("?")[0]
+        is_pin_menu = current_menu_target.endswith("/pin")
+
+        if config.locked and config.lock_menu and not is_pin_menu:
+            return
+        return super(SZObjectContainer, self).add(*args, **kwargs)
+
+
+OriginalObjectContainer = ObjectContainer
+ObjectContainer = SZObjectContainer
+
+
+class SubFolderObjectContainer(ObjectContainer):
+    def __init__(self, *args, **kwargs):
+        super(SubFolderObjectContainer, self).__init__(*args, **kwargs)
         from interface.menu import fatality
         from support.helpers import pad_title, timestamp
         self.add(DirectoryObject(

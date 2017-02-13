@@ -1,50 +1,5 @@
 [
   {
-    "id": "enable_channel",
-    "label": "Enable Sub-Zero channel (disabling doesn't affect the subtitle features)?",
-    "type": "bool",
-    "default": "true"
-  },
-  {
-    "id": "subtitles.try_downloads",
-    "label": "How many download tries per subtitle (on timeout or error)",
-    "type": "enum",
-    "values": [
-      "1",
-      "2",
-      "3",
-      "4"
-    ],
-    "default": "2"
-  },
-  {
-    "id": "provider.addic7ed.username",
-    "label": "Addic7ed Username",
-    "type": "text",
-    "default": ""
-  },
-  {
-    "id": "provider.addic7ed.password",
-    "label": "Addic7ed Password",
-    "type": "text",
-    "option": "hidden",
-    "default": "",
-    "secure": "true"
-  },
-  {
-    "id": "provider.opensubtitles.username",
-    "label": "Opensubtitles Username (VIP)",
-    "type": "text",
-    "default": ""
-  },
-  {
-    "id": "provider.opensubtitles.password",
-    "label": "Opensubtitles Password",
-    "type": "text",
-    "option": "hidden",
-    "default": "",
-    "secure": "true"
-  },
   {
     "id": "provider.legendastv.username",
     "label": "Legendas.TV Username",
@@ -59,13 +14,6 @@
     "default": "",
     "secure": "true"
   },
-  {
-    "id": "provider.addic7ed.use_random_agents",
-    "label": "Addic7ed: Use random user agents (should not be necessary)",
-    "type": "bool",
-    "default": "false"
-  },
-  {
     "id": "langPref1",
     "label": "Subtitle Language (1)",
     "type": "enum",
@@ -233,16 +181,22 @@
     "default": "None"
   },
   {
-    "id": "subtitles.only_one",
-    "label": "Restrict to one language (skips adding \".lang.\" to the subtitle filename; only uses \"Subtitle Language (1)\")",
+    "id": "subtitles.only_foreign",
+    "label": "Only download foreign/forced subtitles",
     "type": "bool",
     "default": "false"
   },
   {
-    "id": "subtitles.enforce_encoding",
-    "label": "Normalize subtitle encoding to UTF-8",
+    "id": "subtitles.language.ietf",
+    "label": "Treat IETF language tags as ISO 639-1 (e.g. pt-BR = pt)",
     "type": "bool",
     "default": "true"
+  },
+  {
+    "id": "subtitles.only_one",
+    "label": "Restrict to one language (skips adding \".lang.\" to the subtitle filename; only uses \"Subtitle Language (1)\")",
+    "type": "bool",
+    "default": "false"
   },
   {
     "id": "provider.opensubtitles.enabled",
@@ -251,10 +205,18 @@
     "default": "true"
   },
   {
-    "id": "provider.thesubdb.enabled",
-    "label": "Provider: Enable TheSubDB",
-    "type": "bool",
-    "default": "true"
+    "id": "provider.opensubtitles.username",
+    "label": "Opensubtitles Username (VIP)",
+    "type": "text",
+    "default": ""
+  },
+  {
+    "id": "provider.opensubtitles.password",
+    "label": "Opensubtitles Password",
+    "type": "text",
+    "option": "hidden",
+    "default": "",
+    "secure": "true"
   },
   {
     "id": "provider.podnapisi.enabled",
@@ -267,6 +229,20 @@
     "label": "Provider: Enable Addic7ed",
     "type": "bool",
     "default": "true"
+  },
+  {
+    "id": "provider.addic7ed.username",
+    "label": "Addic7ed Username",
+    "type": "text",
+    "default": ""
+  },
+  {
+    "id": "provider.addic7ed.password",
+    "label": "Addic7ed Password",
+    "type": "text",
+    "option": "hidden",
+    "default": "",
+    "secure": "true"
   },
   {
     "id": "provider.addic7ed.boost_by",
@@ -299,6 +275,12 @@
     "default": "10"
   },
   {
+    "id": "provider.addic7ed.use_random_agents",
+    "label": "Addic7ed: Use random user agents",
+    "type": "bool",
+    "default": "false"
+  },
+  {
     "id": "provider.tvsubtitles.enabled",
     "label": "Provider: Enable TVsubtitles.net",
     "type": "bool",
@@ -329,63 +311,21 @@
     "default": "true"
   },
   {
-    "id": "subtitles.search.minimumTVScore",
-    "label": "Minimum score for TV subtitles to download",
-    "type": "enum",
-    "values": [
-      "100",
-      "95",
-      "90",
-      "85",
-      "80",
-      "75",
-      "70",
-      "67",
-      "65",
-      "60",
-      "55",
-      "50",
-      "45",
-      "40",
-      "35",
-      "30",
-      "25",
-      "20",
-      "15",
-      "10",
-      "5",
-      "0"
-    ],
-    "default": "85"
+    "id": "subtitles.scan.exotic_ext",
+    "label": "Scan: include \"exotic\" external subtitle formats (anything else than .srt/.ssa/.ass)",
+    "type": "bool",
+    "default": "false"
   },
   {
-    "id": "subtitles.search.minimumMovieScore",
-    "label": "Minimum score for movie subtitles to download",
-    "type": "enum",
-    "values": [
-      "100",
-      "95",
-      "90",
-      "85",
-      "80",
-      "75",
-      "70",
-      "65",
-      "60",
-      "55",
-      "50",
-      "45",
-      "40",
-      "35",
-      "30",
-      "25",
-      "23",
-      "20",
-      "15",
-      "10",
-      "5",
-      "0"
-    ],
+    "id": "subtitles.search.minimumTVScore1",
+    "label": "Minimum score for TV (min: 77, sane: 110; see http://v.ht/szscores)",
+    "type": "text",
+    "default": "110"
+  },
+  {
+    "id": "subtitles.search.minimumMovieScore1",
+    "label": "Minimum score for movies (def: 23, sane: 33; see http://v.ht/szscores)",
+    "type": "text",
     "default": "23"
   },
   {
@@ -437,6 +377,12 @@
     "default": "don't prefer"
   },
   {
+    "id": "subtitles.enforce_encoding",
+    "label": "Normalize subtitle encoding to UTF-8",
+    "type": "bool",
+    "default": "true"
+  },
+  {
     "id": "subtitles.save.filesystem",
     "label": "Store subtitles next to media files (instead of metadata)",
     "type": "bool",
@@ -468,31 +414,19 @@
     "default": "false"
   },
   {
-    "id": "subtitles.language.ietf",
-    "label": "Treat IETF language tags as ISO 639-1 (e.g. pt-BR = pt)",
+    "id": "subtitles.save.chmod",
+      "label": "Set subtitle file permissions to (integer, e.g.: 0775)",
+      "type": "text",
+      "default": ""
+  },
+  {
+    "id": "subtitles.autoclean",
+    "label": "Automatically delete leftover/unused (externally saved) subtitles",
     "type": "bool",
     "default": "true"
   },
   {
-    "id": "subtitles.ignore_fs",
-    "label": "Ignore folders (with \"subzero.ignore/.subzero.ignore/.nosz\" files in them)",
-    "type": "bool",
-    "default": "false"
-  },
-  {
-      "id": "subtitles.ignore_paths",
-      "label": "Ignore anything in the following paths (comma-separated)",
-      "type": "text",
-      "default": ""
-  },
-  {
-      "id": "notify_executable",
-      "label": "Call this executable upon successful subtitle download",
-      "type": "text",
-      "default": ""
-  },
-  {
-    "id": "scheduler.tasks.searchAllRecentlyAddedMissing",
+    "id": "scheduler.tasks.SearchAllRecentlyAddedMissing.frequency",
     "label": "Scheduler: Periodically search for recent items with missing subtitles",
     "type": "enum",
     "values": [
@@ -527,7 +461,110 @@
     "id": "scheduler.max_recent_items_per_library",
     "label": "Scheduler: Recent items to consider per library",
     "type": "text",
-    "default": "200"
+    "default": "500"
+  },
+  {
+    "id": "scheduler.tasks.FindBetterSubtitles.frequency",
+    "label": "Scheduler: Periodically search for better subtitles",
+    "type": "enum",
+    "values": [
+      "never",
+      "every 6 hours",
+      "every 12 hours",
+      "every 24 hours"
+    ],
+    "default": "every 12 hours"
+  },
+  {
+    "id": "scheduler.tasks.FindBetterSubtitles.max_days_after_added",
+    "label": "Scheduler: Days to search for better subtitles (max: 30 days)",
+    "type": "text",
+    "default": "7"
+  },
+  {
+    "id": "scheduler.tasks.FindBetterSubtitles.overwrite_manually_selected",
+    "label": "Scheduler: Overwrite manually selected subtitles when better found",
+    "type": "bool",
+    "default": "true"
+  },
+  {
+    "id": "history_size",
+    "label": "History: amount of items to store historical data for",
+    "type": "enum",
+    "values": [
+      "50",
+      "100",
+      "150",
+      "250",
+      "500"
+    ],
+    "default": "100"
+  },
+  {
+    "id": "subtitles.try_downloads",
+    "label": "How many download tries per subtitle (on timeout or error)",
+    "type": "enum",
+    "values": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "default": "2"
+  },
+  {
+    "id": "subtitles.ignore_fs",
+    "label": "Ignore folders (with \"subzero.ignore/.subzero.ignore/.nosz\" files in them)",
+    "type": "bool",
+    "default": "false"
+  },
+  {
+    "id": "subtitles.ignore_paths",
+    "label": "Ignore anything in the following paths (comma-separated)",
+    "type": "text",
+    "default": ""
+  },
+  {
+    "id": "plugin_mode",
+    "label": "Sub-Zero mode",
+    "type": "enum",
+    "values": [
+      "agent + channel",
+      "only agent",
+      "only channel"
+    ],
+    "default": "agent + channel"
+  },
+  {
+    "id": "plugin_pin",
+    "label": "Access PIN (any amount of numbers, 0-9)",
+    "type": "text",
+    "option": "hidden",
+    "default": "",
+    "secure": "true"
+  },
+  {
+    "id": "plugin_pin_valid_for",
+    "label": "Access PIN valid for minutes",
+    "type": "text",
+    "default": "10"
+  },
+  {
+    "id": "plugin_pin_mode",
+    "label": "Use PIN to restrict access to (needs plugin or PMS restart)",
+    "type": "enum",
+    "values": [
+      "disabled",
+      "channel menu",
+      "advanced menu"
+    ],
+    "default": "disabled"
+  },
+  {
+    "id": "notify_executable",
+    "label": "Call this executable upon successful subtitle download",
+    "type": "text",
+    "default": ""
   },
   {
     "id": "check_permissions",
@@ -553,5 +590,11 @@
     "label": "Log to console (for development/debugging)",
     "type": "bool",
     "default": "false"
+  },
+  {
+    "id": "track_usage",
+    "label": "Collect anonymous usage statistics",
+    "type": "bool",
+    "default": "true"
   }
 ]

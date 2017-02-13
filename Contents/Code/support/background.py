@@ -6,7 +6,7 @@ import traceback
 
 
 def parse_frequency(s):
-    if s == "never":
+    if s == "never" or s == None:
         return None, None
     kind, num, unit = s.split()
     return int(num), unit
@@ -27,8 +27,39 @@ class DefaultScheduler(object):
 
     def init_storage(self):
         if "tasks" not in Dict:
-            Dict["tasks"] = {}
+            Dict["tasks"] = {"queue": []}
             Dict.Save()
+
+        if "queue" not in Dict["tasks"]:
+            Dict["tasks"]["queue"] = []
+
+    def get_task_data(self, name):
+        if name not in Dict["tasks"]:
+            raise NotImplementedError("Task missing! %s" % name)
+
+        if "data" in Dict["tasks"][name]:
+            return Dict["tasks"][name]["data"]
+
+    def clear_task_data(self, name=None):
+        if name is None:
+            # full clean
+            Log.Debug("Clearing previous task data")
+            if Dict["tasks"]:
+                for task_name in Dict["tasks"].keys():
+                    if task_name == "queue":
+                        continue
+
+                    Dict["tasks"][task_name]["data"] = {}
+                    Dict["tasks"][task_name]["running"] = False
+                Dict.Save()
+            return
+
+        if name not in Dict["tasks"]:
+            raise NotImplementedError("Task missing! %s" % name)
+
+        Dict["tasks"][name]["data"] = {}
+        Dict.Save()
+        Log.Debug("Task data cleared: %s", name)
 
     def register(self, task):
         self.registry.append(task)
@@ -38,7 +69,12 @@ class DefaultScheduler(object):
         self.tasks = {}
         for cls in self.registry:
             task = cls(self)
-            self.tasks[task.name] = {"task": task, "frequency": parse_frequency(Prefs["scheduler.tasks.%s" % task.name])}
+            try:
+                task_frequency = Prefs["scheduler.tasks.%s.frequency" % task.name]
+            except KeyError:
+                task_frequency = None
+
+            self.tasks[task.name] = {"task": task, "frequency": parse_frequency(task_frequency)}
 
     def run(self):
         self.running = True
@@ -52,13 +88,18 @@ class DefaultScheduler(object):
             return None
         return self.tasks[name]["task"]
 
+    def is_task_running(self, name):
+        task = self.task(name)
+        if task:
+            return task.running
+
     def last_run(self, task):
         if task not in self.tasks:
             return None
         return self.tasks[task]["task"].last_run
 
     def next_run(self, task):
-        if task not in self.tasks:
+        if task not in self.tasks or not self.tasks[task]["task"].periodic:
             return None
         frequency_num, frequency_key = self.tasks[task]["frequency"]
         if not frequency_num:
@@ -70,24 +111,34 @@ class DefaultScheduler(object):
             use_date = now
         return max(use_date + datetime.timedelta(**{frequency_key: frequency_num}), now)
 
-    def run_task(self, name):
+    def run_task(self, name, *args, **kwargs):
         task = self.tasks[name]["task"]
         if task.running:
             Log.Debug("Scheduler: Not running %s, as it's currently running.", name)
-            return
+            return False
 
         Log.Debug("Scheduler: Running task %s", name)
         try:
-            task.prepare()
+            task.prepare(*args, **kwargs)
             task.run()
         except Exception, e:
             Log.Error("Scheduler: Something went wrong when running %s: %s", name, traceback.format_exc())
         finally:
-            task.post_run()
+            task.post_run(Dict["tasks"][name]["data"])
+            Dict.Save()
+
+    def dispatch_task(self, *args, **kwargs):
+        if "queue" not in Dict["tasks"]:
+            Dict["tasks"]["queue"] = []
+
+        Dict["tasks"]["queue"].append((args, kwargs))
 
     def signal(self, name, *args, **kwargs):
         for task_name, info in self.tasks.iteritems():
             task = info["task"]
+            if not task.periodic:
+                continue
+
             if task.running:
                 Log.Debug("Scheduler: Sending signal %s to task %s (%s, %s)", name, task_name, args, kwargs)
                 status = task.signal(name, *args, **kwargs)
@@ -104,11 +155,22 @@ class DefaultScheduler(object):
             if not self.running:
                 break
 
+            # single dispatch requested?
+            if Dict["tasks"]["queue"]:
+                # work queue off
+                queue = Dict["tasks"]["queue"][:]
+                Dict["tasks"]["queue"] = []
+                Dict.Save()
+                for args, kwargs in queue:
+                    Log.Debug("Dispatching single task: %s, %s", args, kwargs)
+                    Thread.Create(self.run_task, True, *args, **kwargs)
+
+            # scheduled tasks
             for name, info in self.tasks.iteritems():
                 now = datetime.datetime.now()
                 task = info["task"]
 
-                if name not in Dict["tasks"]:
+                if name not in Dict["tasks"] or not task.periodic:
                     continue
 
                 if task.running:
@@ -118,10 +180,10 @@ class DefaultScheduler(object):
                 if not frequency_num:
                     continue
 
-                if not task.last_run or task.last_run + datetime.timedelta(**{frequency_key: frequency_num}) <= now:
+                if not task.last_run or (task.last_run + datetime.timedelta(**{frequency_key: frequency_num}) <= now):
                     self.run_task(name)
 
-            Thread.Sleep(10.0)
+            Thread.Sleep(5.0)
 
 
 scheduler = DefaultScheduler()

@@ -35,8 +35,8 @@ def compute_score(matches, video, scores=None):
 
     is_episode = isinstance(video, Episode)
 
-    episode_hash_valid_if = {"series", "season", "episode"}
-    movie_hash_valid_if = {"title", "video_codec"}
+    episode_hash_valid_if = {"series", "season", "episode", "format"}
+    movie_hash_valid_if = {"video_codec", "format"}
 
     # remove equivalent match combinations
     if 'hash' in final_matches:
@@ -68,7 +68,8 @@ def compute_score(matches, video, scores=None):
 
 class PatchedSubtitle(Subtitle):
     storage_path = None
-    subtitle_id = None
+    release_info = None
+    matches = None
 
     def guess_encoding(self):
         """Guess encoding using the language, falling back on chardet.
@@ -79,7 +80,6 @@ class PatchedSubtitle(Subtitle):
         """
         logger.info('Guessing encoding for language %s', self.language.alpha3)
 
-        # always try utf-8 first
         encodings = ['utf-8']
 
         # add language-specific encodings
@@ -89,7 +89,9 @@ class PatchedSubtitle(Subtitle):
             encodings.append('shift-jis')
         elif self.language.alpha3 == 'tha':
             encodings.append('tis-620')
-        elif self.language.alpha3 == 'ara':
+
+        # arabian/farsi
+        elif self.language.alpha3 in ('ara', 'fas', 'per'):
             encodings.append('windows-1256')
         elif self.language.alpha3 == 'heb':
             encodings.append('windows-1255')
@@ -103,14 +105,15 @@ class PatchedSubtitle(Subtitle):
 
         # Polish, Czech, Slovak, Hungarian, Slovene, Bosnian, Croatian, Serbian (Latin script),
         # Romanian (before 1993 spelling reform) and Albanian
-        elif self.language.alpha3 in ('pol', 'cze', 'svk', 'hun', 'svn', 'bih', 'hrv', 'srb', 'rou', 'alb'):
+        elif self.language.alpha3 in ('pol', 'cze', 'ces', 'slk', 'slo', 'slv', 'hun', 'bos', 'hbs', 'hrv', 'rsb',
+                                      'ron', 'rum', 'sqi', 'alb'):
             # Eastern European Group 1
-            encodings.extend(['windows-1250'])
+            encodings.append('windows-1250')
 
         # Bulgarian, Serbian and Macedonian
-        elif self.language.alpha3 in ('bul', 'srb', 'mkd'):
+        elif self.language.alpha3 in ('bul', 'srp', 'mkd', 'mac'):
             # Eastern European Group 2
-            encodings.extend(['windows-1251'])
+            encodings.append('windows-1251')
         else:
             # Western European (windows-1252)
             encodings.append('latin-1')

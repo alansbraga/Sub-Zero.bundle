@@ -1,3 +1,92 @@
+1.4.19.866
+- core: fix wrong usage of LogKit
+
+
+1.4.19.857
+
+- core: add option to enable/disable channel and/or agent modes (fixes #220)
+- core: skip inexistent internal streams when scanning for internal subtitles (fixes #222)
+- core: fix filename encoding (fixes #223)
+- core: storage optimizations
+- menu: add pin-based channel menu locking (the whole channel or only the advanced menu)
+
+
+1.4.17.836
+- core: support for any media file that PMS supports (internal subtitles on mp4 for example)
+- core: fix broken ignore folders containing "subzero.ignore/.subzero.ignore/.nosz"
+- core: fix duplicate subtitles (lowercase/default case)
+- core: fix broken tasks queue due to oversight
+
+
+1.4.16.822
+- menu: add per-section recently added menu
+- menu: fix accidentally double-triggering a just triggered force-refresh
+- core: reorder settings in a more logical, grouped way
+- core: add simple automatic filesystem/external leftover subtitle cleaning (#133, #152)
+- core: fix force-refresh for big seasons/series
+- core: add setting to look for forced/foreign-only subtitles only (only works for opensubtitles and podnapisi)
+- core: fix custom subtitle folder was being ignored (#211)
+- core: only trust PMS for its movie name, not the series title (fixes #210)
+- core: full support (in filesystem/external mode) for forced/default/normal subtitle tags
+- core: ignore "non-standard" external subtitle files when scanning by default (everything but .srt, .ass, .ssa, fixes #192)
+- core: lower default max_recent_items_per_library to 500
+- core: skip forced/foreign-only subtitles if not specifically wanted
+- core: modify the task queue, hopefully helping #206
+- core: update anonymous usage collection
+
+
+1.4.11.781
+- core: cleanup, logging
+- core/menu: fix addic7ed display in manual subtitle list
+- core: use HTTP for OpenSubtitles instead of HTTPS because of current certificate errors
+- core: find better subtitles should now run smoothly even with replaced files (newer parts)
+
+
+1.4.10.769
+- core: hotfix for legacy intent storage regression
+
+1.4.10.768
+- core: automatically find better subtitles (configurable)
+- menu: display how the subtitle was downloaded (auto, manual, auto-better), in history menu
+- menu/core: correctly handle subtitle list for multiple languages
+- core: lower minimum series score to list subtitles for to 66
+- core: better matching of garbage filenames; we trust Plex now for the series name/movie title fully
+- core: add setting to specifically set the file permissions (chmod)
+
+
+1.4.5.742
+- core: fix force-refresh in certain situations
+- menu: add history
+- menu: add manual subtitle selection
+- menu: run Items with missing subtitles in separate thread for big libraries
+- settings: add history list size option (default: 100)
+- settings: add new default scores (TV: 110); use input instead of dropdown
+- settings: increase default missing subtitles amount per library to 2000
+- core: generic rewrites and optimizations
+- core: better hash verification
+- core: add anonymous usage data (opt-out in settings)
+- core: fix pt-BR display (IETF) again
+- wiki: update (thanks @dane22!) - quick URL: http://v.ht/szwiki
+- wiki: add score explanation - quick URL: http://v.ht/szscores
+- core: add persian/farsi encoding support
+
+
+1.3.49.636
+- core/menu: fix force refreshing (again)
+- core/menu: fix redundant route calls
+
+
+1.3.49.630 (backported some changes of the develop-1.4 branch to 1.3)
+- core/menu: make addic7ed boost configurable; lower the default boost value massively (to 10)
+- core: fix force refreshing (hopefully)
+- core: add (thai) tis-620 subtitle encoding support
+- menu: lower letter based menu browsing from 200 to 80 items
+- core: support greek encodings (windows-1253, cp1253, cp737, iso8859_7, cp875, cp869, iso2022_jp_2, mac_greek); hopefully fixes badly saved greek subs
+- menu: add generic back-to-home button to the top of every container view
+- menu: warn the user when SZ isn't enabled for any sections/libraries
+- menu: always re-check permissions status and enabled sections when opening the main menu; no server restart necessary anymore
+
+
 1.3.46.606
 - core: hotfix for new users (who've never downloaded a subtitle with SZ before); fixes #169
 

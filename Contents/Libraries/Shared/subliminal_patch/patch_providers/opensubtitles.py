@@ -5,7 +5,10 @@ import os
 
 from babelfish import Language
 from subliminal.exceptions import ConfigurationError
-from subliminal.providers.opensubtitles import OpenSubtitlesProvider, checked, get_version, __version__, OpenSubtitlesSubtitle, Episode
+from subliminal.providers.opensubtitles import OpenSubtitlesProvider, checked, get_version, __version__, \
+    OpenSubtitlesSubtitle, Episode, ServerProxy
+from mixins import ProviderRetryMixin
+from six.moves.xmlrpc_client import Transport
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +21,7 @@ class PatchedOpenSubtitlesSubtitle(OpenSubtitlesSubtitle):
                                                            movie_release_name, movie_year, movie_imdb_id, series_season, series_episode)
         self.query_parameters = query_parameters or {}
         self.fps = fps
+        self.release_info = movie_release_name
 
     def get_matches(self, video, hearing_impaired=False):
         matches = super(PatchedOpenSubtitlesSubtitle, self).get_matches(video, hearing_impaired=hearing_impaired)
@@ -39,26 +43,52 @@ class PatchedOpenSubtitlesSubtitle(OpenSubtitlesSubtitle):
             # treat a tag match equally to a hash match
             logger.debug("Subtitle matched by tag, treating it as a hash-match. Tag: '%s'", self.query_parameters.get("tag", None))
             matches.add("hash")
+
         return matches
 
 
-class PatchedOpenSubtitlesProvider(OpenSubtitlesProvider):
-    def __init__(self, username=None, password=None, use_tag_search=False):
+class TimeoutTransport(Transport):
+    """Timeout support for ``xmlrpc.client.SafeTransport``."""
+    def __init__(self, timeout, *args, **kwargs):
+        Transport.__init__(self, *args, **kwargs)
+        self.timeout = timeout
+
+    def make_connection(self, host):
+        c = Transport.make_connection(self, host)
+        c.timeout = self.timeout
+
+        return c
+
+
+class PatchedOpenSubtitlesProvider(ProviderRetryMixin, OpenSubtitlesProvider):
+    only_foreign = True
+
+    def __init__(self, username=None, password=None, use_tag_search=False, only_foreign=False):
         if username is not None and password is None or username is None and password is not None:
             raise ConfigurationError('Username and password must be specified')
 
         self.username = username or ''
         self.password = password or ''
         self.use_tag_search = use_tag_search
+        self.only_foreign = only_foreign
 
         if use_tag_search:
             logger.info("Using tag/exact filename search")
 
+        if only_foreign:
+            logger.info("Only searching for foreign/forced subtitles")
+
         super(PatchedOpenSubtitlesProvider, self).__init__()
+        self.server = ServerProxy('http://api.opensubtitles.org/xml-rpc', TimeoutTransport(10))
 
     def initialize(self):
         logger.info('Logging in')
-        response = checked(self.server.LogIn(self.username, self.password, 'eng', 'subliminal v%s' % get_version(__version__)))
+        # fixme: retry on SSLError
+        response = self.retry(
+            lambda: checked(
+                self.server.LogIn(self.username, self.password, 'eng', 'subliminal v%s' % get_version(__version__))
+            )
+        )
         self.token = response['token']
         logger.debug('Logged in with token %r', self.token)
 
@@ -70,6 +100,7 @@ class PatchedOpenSubtitlesProvider(OpenSubtitlesProvider):
 
          patch: query movies even if hash is known; add tag parameter
         """
+
         season = episode = None
         if isinstance(video, Episode):
             query = video.series
@@ -81,9 +112,11 @@ class PatchedOpenSubtitlesProvider(OpenSubtitlesProvider):
             query = video.title
 
         return self.query(languages, hash=video.hashes.get('opensubtitles'), size=video.size, imdb_id=video.imdb_id,
-                          query=query, season=season, episode=episode, tag=os.path.basename(video.name), use_tag_search=self.use_tag_search)
+                          query=query, season=season, episode=episode, tag=os.path.basename(video.name),
+                          use_tag_search=self.use_tag_search, only_foreign=self.only_foreign)
 
-    def query(self, languages, hash=None, size=None, imdb_id=None, query=None, season=None, episode=None, tag=None, use_tag_search=False):
+    def query(self, languages, hash=None, size=None, imdb_id=None, query=None, season=None, episode=None, tag=None,
+              use_tag_search=False, only_foreign=False):
         # fill the search criteria
         criteria = []
         if hash and size:
@@ -105,7 +138,7 @@ class PatchedOpenSubtitlesProvider(OpenSubtitlesProvider):
 
         # query the server
         logger.info('Searching subtitles %r', criteria)
-        response = checked(self.server.SearchSubtitles(self.token, criteria))
+        response = self.retry(lambda: checked(self.server.SearchSubtitles(self.token, criteria)))
         subtitles = []
 
         # exit if no data
@@ -130,6 +163,17 @@ class PatchedOpenSubtitlesProvider(OpenSubtitlesProvider):
             movie_fps = subtitle_item.get('MovieFPS')
             series_season = int(subtitle_item['SeriesSeason']) if subtitle_item['SeriesSeason'] else None
             series_episode = int(subtitle_item['SeriesEpisode']) if subtitle_item['SeriesEpisode'] else None
+            sub_file_name = subtitle_item.get('SubFileName')
+            foreign_parts_only = bool(int(subtitle_item.get('SubForeignPartsOnly', 0)))
+
+            # foreign/forced subtitles only wanted
+            if only_foreign and not foreign_parts_only:
+                continue
+
+            # foreign/forced not wanted
+            if not only_foreign and foreign_parts_only:
+                continue
+
             query_parameters = subtitle_item.get("QueryParameters")
 
             subtitle = PatchedOpenSubtitlesSubtitle(language, hearing_impaired, page_link, subtitle_id, matched_by, movie_kind,

@@ -12,9 +12,10 @@ logger = logging.getLogger(__name__)
 
 # may be absolute or relative paths; set to selected options
 CUSTOM_PATHS = []
+INCLUDE_EXOTIC_SUBS = True
 
 
-def _search_external_subtitles(path):
+def _search_external_subtitles(path, forced_tag=False):
     dirpath, filename = os.path.split(path)
     dirpath = dirpath or '.'
     fileroot, fileext = os.path.splitext(filename)
@@ -24,8 +25,25 @@ def _search_external_subtitles(path):
         if not p.startswith(fileroot) or not p.endswith(SUBTITLE_EXTENSIONS):
             continue
 
+        p_root, p_ext = os.path.splitext(p)
+        if not INCLUDE_EXOTIC_SUBS and p_ext not in (".srt", ".ass", ".ssa"):
+            continue
+
+        # extract potential forced/normal/default tag
+        # fixme: duplicate from subtitlehelpers
+        split_tag = p_root.rsplit('.', 1)
+        adv_tag = None
+        if len(split_tag) > 1:
+            adv_tag = split_tag[1].lower()
+            if adv_tag in ['forced', 'normal', 'default']:
+                p_root = split_tag[0]
+
+        # forced wanted but NIL
+        if forced_tag and adv_tag != "forced":
+            continue
+
         # extract the potential language code
-        language_code = p[len(fileroot):-len(os.path.splitext(p)[1])].replace(fileext, '').replace('_', '-')[1:]
+        language_code = p_root[len(fileroot):].replace('_', '-')[1:]
 
         # default language is undefined
         language = Language('und')
@@ -44,7 +62,7 @@ def _search_external_subtitles(path):
     return subtitles
 
 
-def patched_search_external_subtitles(path):
+def patched_search_external_subtitles(path, forced_tag=False):
     """
     wrap original search_external_subtitles function to search multiple paths for one given video
     # todo: cleanup and merge with _search_external_subtitles
@@ -62,12 +80,13 @@ def patched_search_external_subtitles(path):
         logger.debug("external subs: scanning path %s", abspath)
 
         if os.path.isdir(os.path.dirname(abspath)):
-            subtitles.update(_search_external_subtitles(abspath))
+            subtitles.update(_search_external_subtitles(abspath, forced_tag=forced_tag))
     logger.debug("external subs: found %s", subtitles)
     return subtitles
 
 
-def scan_video(path, subtitles=True, embedded_subtitles=True, hints=None, video_fps=None, dont_use_actual_file=False):
+def scan_video(path, subtitles=True, embedded_subtitles=True, hints=None, video_fps=None, dont_use_actual_file=False,
+               forced_tag=False, known_embedded_subtitle_streams=None):
     """Scan a video and its subtitle languages from a video `path`.
     :param dont_use_actual_file: guess on filename, but don't use the actual file itself
     :param str path: existing path to the video.
@@ -80,6 +99,7 @@ def scan_video(path, subtitles=True, embedded_subtitles=True, hints=None, video_
     # patch: suggest video type to guessit beforehand
     """
     hints = hints or {}
+    video_type = hints.get("type")
 
     # check for non-existing path
     if not dont_use_actual_file and not os.path.exists(path):
@@ -92,34 +112,47 @@ def scan_video(path, subtitles=True, embedded_subtitles=True, hints=None, video_
     dirpath, filename = os.path.split(path)
 
     # hint guessit the filename itself and its 2 parent directories if we're an episode (most likely Series name/Season/filename), else only one
-    guess_from = os.path.join(*os.path.normpath(path).split(os.path.sep)[-3 if hints.get("type") == "episode" else -2:])
+    guess_from = os.path.join(*os.path.normpath(path).split(os.path.sep)[-3 if video_type == "episode" else -2:])
     hints = hints or {}
     logger.info('Scanning video (hints: %s) %r', hints, guess_from)
 
     # guess
-    try:
-        video = Video.fromguess(path, guess_file_info(guess_from, options=hints))
-        video.fps = video_fps
+    video = Video.fromguess(path, guess_file_info(guess_from, options=hints))
+    video.fps = video_fps
 
-        if dont_use_actual_file:
-            return video
+    # trust plex's movie name
+    if video_type == "movie" and hints.get("expected_title"):
+        video.title = hints.get("expected_title")[0]
 
-        # size and hashes
-        video.size = os.path.getsize(path)
-        if video.size > 10485760:
-            logger.debug('Size is %d', video.size)
-            video.hashes['opensubtitles'] = hash_opensubtitles(path)
-            video.hashes['thesubdb'] = hash_thesubdb(path)
-            logger.debug('Computed hashes %r', video.hashes)
-        else:
-            logger.warning('Size is lower than 10MB: hashes not computed')
+    if dont_use_actual_file:
+        return video
 
-        # external subtitles
-        if subtitles:
-            video.subtitle_languages |= set(patched_search_external_subtitles(path).values())
-    except Exception:
-        logger.error("Something went wrong when running guessit: %s", traceback.format_exc())
-        return
+    # size and hashes
+    video.size = os.path.getsize(path)
+    if video.size > 10485760:
+        logger.debug('Size is %d', video.size)
+        video.hashes['opensubtitles'] = hash_opensubtitles(path)
+        video.hashes['thesubdb'] = hash_thesubdb(path)
+        logger.debug('Computed hashes %r', video.hashes)
+    else:
+        logger.warning('Size is lower than 10MB: hashes not computed')
+
+    # external subtitles
+    if subtitles:
+        video.subtitle_languages |= set(patched_search_external_subtitles(path, forced_tag=forced_tag).values())
+
+    if embedded_subtitles and known_embedded_subtitle_streams:
+        embedded_subtitle_languages = set()
+        # mp4 and stuff, check burned in
+        for language in known_embedded_subtitle_streams:
+            try:
+                embedded_subtitle_languages.add(Language.fromalpha3b(language))
+            except BabelfishError:
+                logger.error('Embedded subtitle track language %r is not a valid language', language)
+                embedded_subtitle_languages.add(Language('und'))
+
+            logger.debug('Found embedded subtitle %r', embedded_subtitle_languages)
+            video.subtitle_languages |= embedded_subtitle_languages
 
     # video metadata with enzyme
     try:
@@ -167,33 +200,6 @@ def scan_video(path, subtitles=True, embedded_subtitles=True, hints=None, video_
                     logger.debug('Found audio_codec %s with enzyme', video.audio_codec)
             else:
                 logger.warning('MKV has no audio track')
-
-            # subtitle tracks
-            if mkv.subtitle_tracks:
-                if embedded_subtitles:
-                    embedded_subtitle_languages = set()
-                    for st in mkv.subtitle_tracks:
-                        if st.forced:
-                            logger.debug("Ignoring forced subtitle track %r", st)
-                            continue
-                        if st.language:
-                            try:
-                                embedded_subtitle_languages.add(Language.fromalpha3b(st.language))
-                            except BabelfishError:
-                                logger.error('Embedded subtitle track language %r is not a valid language', st.language)
-                                embedded_subtitle_languages.add(Language('und'))
-                        elif st.name:
-                            try:
-                                embedded_subtitle_languages.add(Language.fromname(st.name))
-                            except BabelfishError:
-                                logger.debug('Embedded subtitle track name %r is not a valid language', st.name)
-                                embedded_subtitle_languages.add(Language('und'))
-                        else:
-                            embedded_subtitle_languages.add(Language('und'))
-                    logger.debug('Found embedded subtitle %r with enzyme', embedded_subtitle_languages)
-                    video.subtitle_languages |= embedded_subtitle_languages
-            else:
-                logger.debug('MKV has no subtitle track')
 
     except EnzymeError:
         logger.error('Parsing video metadata with enzyme failed')
