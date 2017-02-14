@@ -1,6 +1,5 @@
 [
   {
-  {
     "id": "provider.legendastv.username",
     "label": "Legendas.TV Username",
     "type": "text",
@@ -14,6 +13,7 @@
     "default": "",
     "secure": "true"
   },
+  {
     "id": "langPref1",
     "label": "Subtitle Language (1)",
     "type": "enum",
