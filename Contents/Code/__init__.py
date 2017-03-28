@@ -1,6 +1,7 @@
 # coding=utf-8
 import datetime
 import sys
+import traceback
 
 from subzero.sandbox import restore_builtins
 
@@ -32,7 +33,7 @@ from support.config import config
 from support.lib import get_intent
 from support.helpers import track_usage, get_title_for_video_metadata, get_identifier, cast_bool
 from support.history import get_history
-from support.data import migrate
+from support.data import dispatch_migrate
 
 
 def Start():
@@ -54,7 +55,8 @@ def Start():
                 del Dict["menu_history"][key]
 
     # run migrations
-    migrate()
+    if "subs" in Dict or "history" in Dict:
+        Thread.Create(dispatch_migrate)
 
     # clear old task data
     scheduler.clear_task_data()

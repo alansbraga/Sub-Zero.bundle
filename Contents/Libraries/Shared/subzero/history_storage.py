@@ -1,12 +1,12 @@
 # coding=utf-8
 
 import datetime
+import logging
+import traceback
 
-mode_map = {
-    "a": "auto",
-    "m": "manual",
-    "b": "auto-better"
-}
+from constants import mode_map
+
+logger = logging.getLogger(__name__)
 
 
 class SubtitleHistoryItem(object):
@@ -66,7 +66,11 @@ class SubtitleHistory(object):
     def __init__(self, storage, size=100):
         self.size = size
         self.storage = storage
-        self.history_items = storage.LoadObject("subtitle_history") or []
+        self.history_items = []
+        try:
+            self.history_items = storage.LoadObject("subtitle_history") or []
+        except:
+            logger.error("Failed to load history storage: %s" % traceback.format_exc())
 
     def add(self, item_title, rating_key, section_title=None, subtitle=None, mode="a", time=None):
         # create copy

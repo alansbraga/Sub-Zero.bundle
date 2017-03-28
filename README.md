@@ -10,12 +10,13 @@ Checkout **[the Sub-Zero Wiki](https://github.com/pannal/Sub-Zero.bundle/wiki)**
 
 ## Changelog
 
-1.4.19.878
-- core/menu: fix a task's last runtime display
-- core: task optimizations
-- core: fix leftover subtitles cleanup handling in case of a custom subtitle folder #234
-- core: run the scheduler even if permissions for libraries are wrong ("fixes" #236)
-- core: store subtitle history data in a different data format; reduce used storage size drastically (#233)
+
+1.4.23.920
+- core: handle undecodable paths better #255
+- core: don't fail on unrecoverable data #257
+- core: increase default scores from 110 (series) and 23 (movies) to 116 and 33
+- core: fix global subtitle folder handling #234
+- core: better invoking of configured executable after subtitle addition #247
 
 
 [older changes](CHANGELOG.md)
